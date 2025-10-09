@@ -3,7 +3,7 @@
 using namespace std;
 using namespace cv;
 
-FrameProcessor::FrameProcessor(std::string detectorName, float threshold, int planes)
+FrameProcessor::FrameProcessor(std::string detectorName, int threshold, int planes)
 	: m_threshold(threshold)
 {
     m_pDetector = BRISK::create(threshold, planes);
@@ -34,7 +34,7 @@ ImageData FrameProcessor::MatchImages(cv::InputArray& im1, FeatureInfo & first, 
 	return ret;
 }
 
-float FrameProcessor::SetThreshold(float newThreshold)
+int FrameProcessor::SetThreshold(int newThreshold)
 {
 	cv::Ptr<cv::BRISK> ptr = m_pDetector.dynamicCast<cv::BRISK>();
 	ptr->setThreshold(newThreshold);

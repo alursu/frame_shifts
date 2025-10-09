@@ -1,9 +1,4 @@
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <fstream>
-
 #include "pipeline.hpp"
-#include "frameprocessor.hpp"
 
 #define MATCH_SIZE 40
 #define OFFSET 5
@@ -15,34 +10,24 @@ using namespace cv;
 
 #define M_PI 3.1415926535897932384626433832795
 
-static double rad2Deg(double rad){return rad*(180/M_PI);}//Convert radians to degrees
-static double deg2Rad(double deg){return deg*(M_PI/180);}//Convert degrees to radians
-
-
-Pipeline::Pipeline(float threshold, int octaves)
+Pipeline::Pipeline(int threshold, int octaves)
 	: m_frameProcessor("BRISK", threshold, octaves)
 {
 }
 
-int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName, long long to)
+int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 {
 	Mat first, second;
 	FeatureInfo firstInfo, secondInfo;
 	VideoCapture cap(videoFileName);
-	if (!cap.isOpened()){
-		std::cout << "suuuuuuuuuuukaaaaaaa" << std::endl;
+	if (!cap.isOpened()){ 
+		std::cout << "video is not opened" << std::endl;
 		return -1;
-	}
-		// return -1;
-	long long cnt = 0;
-	if (to < 0)
-	{
-		to = std::numeric_limits<long long>::max();
 	}
 	Size imageSize;
 	cv::Rect cropRect;
 
-	if (cap.grab() && cnt<to)
+	if (cap.grab())
 	{
 		cap >> second;
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -52,7 +37,10 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName, l
 		secondInfo = m_frameProcessor.GetKeypointData(second);
 	}
 
-	while (cap.grab() && cnt < to)
+	std::ofstream shifts;
+	shifts.open(outFileName);
+
+	while (cap.grab())
 	{
 		first = second.clone();
 		swap(firstInfo, secondInfo);
@@ -62,25 +50,13 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName, l
 		}
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
-		cnt++;
 		auto result = m_frameProcessor.MatchImages(first, firstInfo, second, secondInfo);
-		m_matchedData.push_back(result);
+		cv::Mat move = m_estimator.EstimateMovements(result);
+		shifts << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
 	}
 
 	cap.release();
+	shifts.close();
 
-	cout << "Estimating movems..." << endl;
-	for (auto const & item : m_matchedData)
-	{
-		m_estimator.EstimateMovements(item);
-	}
-	auto movems = m_estimator.GetMovements();
-
-	std::ofstream out_matrix_with_offset;
-	out_matrix_with_offset.open(outFileName);
-	for (auto move : movems){
-		out_matrix_with_offset << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
-	}
-	out_matrix_with_offset.close();
 	return 0;
 }

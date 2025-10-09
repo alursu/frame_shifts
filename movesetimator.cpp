@@ -25,22 +25,19 @@ cv::Mat MoveEstimator::EstimateMovements(ImageData const &next)
     invertAffineTransform(transform, transform);
 
     transform.push_back(Mat(vector<double>{0,0,1.0}).t());
-    m_movemetns.push_back(transform);
-    
     return transform;
 }
 
 void MoveEstimator::Reset(float angle)
 {
-    m_movemetns.clear();
     InitMatrix(angle);
 }
 
 void MoveEstimator::InitMatrix(float angle)
 {
+    //единичная матрица (для угла = 0 и центральной точки = (0,0))
     Mat first = getRotationMatrix2D(Point2f(0,0), angle, 1);
     first.push_back(Mat(vector<double>{0,0,1.0}).t());
-    m_movemetns.push_back(first);
 }
 
 void MoveEstimator::CosnstantZoom(Mat &mat)
