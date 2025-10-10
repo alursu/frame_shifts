@@ -2,6 +2,7 @@
 
 #include <opencv2/features2d.hpp>
 #include "imagedata.hpp"
+#include <cmath>
 
 class FrameProcessor
 {
@@ -22,7 +23,7 @@ protected:
 	cv::Ptr<cv::DescriptorExtractor> m_pDescriptor;
 	cv::Ptr<cv::DescriptorMatcher> m_pMatcher;
 
-    int m_minimumFeaturesRequired = 100;
+    double m_minimumFeaturesRequired = 90;
     float constexpr static minimumThreshold = 10.0;
     int m_threshold;
 };

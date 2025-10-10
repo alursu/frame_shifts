@@ -1,4 +1,5 @@
 #include "pipeline.hpp"
+#include <ctime>
 
 #define MATCH_SIZE 40
 #define OFFSET 5
@@ -24,7 +25,6 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		std::cout << "video is not opened" << std::endl;
 		return -1;
 	}
-	Size imageSize;
 	cv::Rect cropRect;
 
 	if (cap.grab())
@@ -33,15 +33,21 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
-		imageSize = second.size();
 		secondInfo = m_frameProcessor.GetKeypointData(second);
 	}
 
 	std::ofstream shifts;
+	std::ofstream time;
+	time.open("time_test1_90_4_threshold_optimize_middle(20).txt");
+	time << "Time before start matching: " << clock() << std::endl << "Start matching:" << std::endl;
 	shifts.open(outFileName);
+	int sum = 0;
+	int frames = 0;
+
 
 	while (cap.grab())
 	{
+		clock_t start = clock();
 		first = second.clone();
 		swap(firstInfo, secondInfo);
 		cap >> second;
@@ -52,11 +58,18 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 		auto result = m_frameProcessor.MatchImages(first, firstInfo, second, secondInfo);
 		cv::Mat move = m_estimator.EstimateMovements(result);
+		clock_t end = clock();
+		time << (end-start) << std::endl;
+		sum+=(end-start);
+		frames++;
 		shifts << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
 	}
 
+	time << "Общее время обработки: " << sum << ", Среднее время обработки: " << (float)(sum/frames) << ", Кол-во кадров: " << frames << std::endl;
+
 	cap.release();
 	shifts.close();
+	time.close();
 
 	return 0;
 }

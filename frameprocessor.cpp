@@ -62,12 +62,14 @@ bool FrameProcessor::CheckThreshold(ImageData const & data)
 	auto totalMatches = data.Matches().size();
 	if (totalMatches < m_minimumFeaturesRequired && m_threshold>minimumThreshold)
 	{
-		m_threshold = SetThreshold(--m_threshold);
+		m_threshold-= ceil((1-totalMatches/(2.5*m_minimumFeaturesRequired))*20);
+		SetThreshold(m_threshold);
 		return false;
 	}
-	if (totalMatches > 5 * m_minimumFeaturesRequired)
+	if (totalMatches > 4 * m_minimumFeaturesRequired)
 	{
-		m_threshold = SetThreshold(++m_threshold);
+		m_threshold+= ceil((1-(2.5*m_minimumFeaturesRequired)/totalMatches)*20);
+		SetThreshold(m_threshold);
 		return false;
 	}
     return true;

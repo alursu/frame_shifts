@@ -13,4 +13,6 @@ public:
 protected:
     void InitMatrix(float angle);
     void CosnstantZoom(cv::Mat& mat);
+private:
+    cv::Mat prev;
 };
