@@ -3,6 +3,7 @@
 #include <opencv2/opencv.hpp>
 #include <vector>
 
+// Класс для защищенного хранения и передачи информации об изображениях
 class ImageData
 {
 public:
