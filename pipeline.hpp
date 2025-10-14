@@ -11,6 +11,7 @@
 #include "imagedata.hpp"
 #include "frameprocessor.hpp"
 #include "movesetimator.hpp"
+#include "opticalflowlkt.hpp"
 
 class Pipeline
 {

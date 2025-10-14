@@ -20,6 +20,15 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 {
 	Mat first, second;
 
+	std::ofstream shifts;
+	shifts.open(outFileName);
+
+	std::ofstream shifts_lk;
+	shifts_lk.open("shifts_lk.txt");
+
+	std::ofstream time_lk;
+	time_lk.open("time_lk.txt");
+
 	// FeatureInfo - структура для хранения ключевых точек и их дескрипторов 
 	FeatureInfo firstInfo, secondInfo;
 
@@ -32,6 +41,8 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		return -1;
 	}
 	cv::Rect cropRect;
+	cv::Point2f out;
+	Opticalflow opticalflow;
 
 	// Если захватили кадр - начинаем обработку
 	if (cap.grab())
@@ -53,18 +64,24 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 
 		// Определяем ключевые точки изображения и соответствующие им дескрипторы
 		secondInfo = m_frameProcessor.GetKeypointData(second);
+
+		clock_t start = clock();
+		out = opticalflow.GetOpticalFlow(second);
+		clock_t end = clock();
+		time_lk << (end-start) << std::endl;
+		shifts_lk << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
 	}
 
 	// Инициализируем потоки вывода для смещений и информации о времени работы программы
-	std::ofstream shifts;
 	std::ofstream time;
 	time.open("time_test1_90_4_threshold_optimize_middle(20).txt");
 	time << "Time before start matching: " << clock() << std::endl << "Start matching:" << std::endl;
-	shifts.open(outFileName);
 
 	// Переменные для вычисления кол-ва кадров и суммарного времени обработки кадров (начиная со 2-го)
 	int sum = 0;
 	int frames = 0;
+
+	int sum_lk = 0;
 
 	// Пока можем захватывать кадры - обработка
 	while (cap.grab())
@@ -93,14 +110,25 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		sum+=(end-start);
 		frames++;
 		shifts << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
+
+		clock_t start_lk = clock();
+		out = opticalflow.GetOpticalFlow(second);
+		clock_t end_lk = clock();
+		time_lk << (end_lk - start_lk) << std::endl;
+		sum_lk+=(end_lk - start_lk);
+
+		shifts_lk << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
 	}
 
 	time << "Общее время обработки: " << sum << ", Среднее время обработки: " << (float)(sum/frames) << ", Кол-во кадров: " << frames << std::endl;
 
+	time_lk <<"Общее время обработки: " << sum_lk << ", Среднее время обработки: " << (float)(sum_lk/frames) << ", Кол-во кадров: " << frames << std::endl;
 	// Закрываем файлы и источник видео
 	cap.release();
 	shifts.close();
+	shifts_lk.close();
 	time.close();
+	time_lk.close();
 
 	return 0;
 }

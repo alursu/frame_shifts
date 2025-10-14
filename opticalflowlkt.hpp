@@ -1,32 +1,28 @@
 #pragma once
 
 #include <opencv2/opencv.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#include <opencv2/core.hpp>
-#include <iostream>
-#include <vector>
-#include <map>
-#include <string>
 #include <ctime>
-#include <cmath>
-#include <vector>
-#include <string>
-#include <exception>
-#include <numeric>
-#include <sstream>
-#include <iomanip>
-#include <iterator>
-#include <algorithm>
-#include <stdexcept>
 
 class Opticalflow
 {
 public:
-	Opticalflow();
-protected:
-	cv::Mat prev_image;
-	double prev_image_time = 0.0;
-public:
+	cv::Point2f GetOpticalFlow(const cv::Mat& curr_image, bool include_augmented_image = false, bool rev_flow = false);
 
+protected:
+	std::string GetAugmentedImage (std::string& image_base64);
+
+	cv::Mat prev_image;
+	double crop_factor = 0.6;
+
+private:
+	// Parameters for Shi-Tomasi corner detection
+    int maxCorners = 50;
+    double qualityLevel = 0.2;
+    double minDistance = 10;
+    int blockSize = 5;
+
+	// Parameters for Lucas-Kanade optical flow
+    cv::Size winSize = cv::Size(15, 15);
+    int maxLevel = 2;
+    cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
 };
