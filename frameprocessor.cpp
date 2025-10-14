@@ -91,7 +91,7 @@ bool FrameProcessor::CheckThreshold(ImageData const & data)
 	auto totalMatches = data.Matches().size();
 	if (totalMatches < m_minimumFeaturesRequired && m_threshold>minimumThreshold)
 	{
-		m_threshold-= ceil((1-totalMatches/(2.5*m_minimumFeaturesRequired))*20);
+		m_threshold-= static_cast<int>(ceil((1-totalMatches/(2.5*m_minimumFeaturesRequired))*20));
 		SetThreshold(m_threshold);
 		return false;
 	}
@@ -99,7 +99,7 @@ bool FrameProcessor::CheckThreshold(ImageData const & data)
 	// Аналогично, проверяем верхнуюю границу - 360. 
 	if (totalMatches > 4 * m_minimumFeaturesRequired)
 	{
-		m_threshold+= ceil((1-(2.5*m_minimumFeaturesRequired)/totalMatches)*20);
+		m_threshold+= static_cast<int>(ceil((1-(2.5*m_minimumFeaturesRequired)/totalMatches)*20));
 		SetThreshold(m_threshold);
 		return false;
 	}

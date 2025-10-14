@@ -15,7 +15,7 @@
 class Pipeline
 {
 public:
-	Pipeline(int threshold = 30, int octaves = 3);
+	explicit Pipeline(int threshold = 30, int octaves = 3);
 
 protected:
 
