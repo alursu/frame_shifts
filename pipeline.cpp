@@ -33,11 +33,16 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	FeatureInfo firstInfo, secondInfo;
 
 	// Захват видео
-	VideoCapture cap(videoFileName);
+	// VideoCapture cap(videoFileName);
+	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
+	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" ! decodebin ! videoconvert ! appsink sync=false";
+	cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
+	
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
-	if (!cap.isOpened()){ 
+	if (!cap->isOpened()){ 
 		std::cout << "video is not opened" << std::endl;
+		cap->release();
 		return -1;
 	}
 	cv::Rect cropRect;
@@ -45,12 +50,12 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	Opticalflow opticalflow;
 
 	// Если захватили кадр - начинаем обработку
-	if (cap.grab())
+	if (cap->grab())
 	{
 		// Загружаем изображение. Загружаем в second, чтобы далее сравнивать соседние кадры
 		// Т.е. меняем second и first местами каждый раз, загружаем последующее изображение в 
 		// second
-		cap >> second;
+		*cap >> second;
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -65,11 +70,10 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		// Определяем ключевые точки изображения и соответствующие им дескрипторы
 		secondInfo = m_frameProcessor.GetKeypointData(second);
 
-		clock_t start = clock();
+		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
 		out = opticalflow.GetOpticalFlow(second);
-		clock_t end = clock();
+		clock_t end = 1000*clock()/CLOCKS_PER_SEC;
 		time_lk << (end-start) << std::endl;
-		shifts_lk << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
 	}
 
 	// Инициализируем потоки вывода для смещений и информации о времени работы программы
@@ -84,12 +88,12 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	int sum_lk = 0;
 
 	// Пока можем захватывать кадры - обработка
-	while (cap.grab())
+	while (cap->grab())
 	{
-		clock_t start = clock();
+		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
 		first = second.clone();
 		swap(firstInfo, secondInfo);
-		cap >> second;
+		*cap >> second;
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
 			continue;
@@ -105,15 +109,15 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		cv::Mat move = m_estimator.EstimateMovements(result);
 
 		// Записываем время обработки и смещения
-		clock_t end = clock();
+		clock_t end = 1000*clock()/CLOCKS_PER_SEC;
 		time << (end-start) << std::endl;
 		sum+=(end-start);
 		frames++;
 		shifts << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
 
-		clock_t start_lk = clock();
+		clock_t start_lk = 1000*clock()/CLOCKS_PER_SEC;
 		out = opticalflow.GetOpticalFlow(second);
-		clock_t end_lk = clock();
+		clock_t end_lk = 1000*clock()/CLOCKS_PER_SEC;
 		time_lk << (end_lk - start_lk) << std::endl;
 		sum_lk+=(end_lk - start_lk);
 
@@ -124,7 +128,7 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 
 	time_lk <<"Общее время обработки: " << sum_lk << ", Среднее время обработки: " << (float)(sum_lk/frames) << ", Кол-во кадров: " << frames << std::endl;
 	// Закрываем файлы и источник видео
-	cap.release();
+	cap->release();
 	shifts.close();
 	shifts_lk.close();
 	time.close();
