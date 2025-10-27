@@ -12,6 +12,7 @@
 #include "frameprocessor.hpp"
 #include "movesetimator.hpp"
 #include "opticalflowlkt.hpp"
+#include "uartmavlink.hpp"
 
 class Pipeline
 {

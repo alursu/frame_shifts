@@ -24,6 +24,6 @@ protected:
 	cv::Ptr<cv::DescriptorMatcher> m_pMatcher;
 
     double m_minimumFeaturesRequired = 90;
-    float constexpr static minimumThreshold = 10.0;
+    float constexpr static minimumThreshold = 5.0;
     int m_threshold;
 };

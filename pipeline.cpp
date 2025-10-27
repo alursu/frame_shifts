@@ -1,5 +1,9 @@
 #include "pipeline.hpp"
 #include <ctime>
+#include <fcntl.h>
+#include <unistd.h>
+#include <termios.h>
+#include <sys/time.h>
 
 #define OFFSET 5
 #define OFFSET_Y 5
@@ -28,6 +32,8 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 
 	std::ofstream time_lk;
 	time_lk.open("time_lk.txt");
+	int uart_fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_SYNC);
+	std::cout << uart_fd << std::endl;
 
 	// FeatureInfo - структура для хранения ключевых точек и их дескрипторов 
 	FeatureInfo firstInfo, secondInfo;
@@ -35,7 +41,7 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	// Захват видео
 	// VideoCapture cap(videoFileName);
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
-	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" ! decodebin ! videoconvert ! appsink sync=false";
+	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
 	cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
 	
 
@@ -98,22 +104,25 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		if (second.rows == 0 || second.cols == 0){
 			continue;
 		}
+		
+		cv::imshow("stream", second);
+		cv::waitKey(30);	
 
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
 		// Сравниваем соседние кадры
-		auto result = m_frameProcessor.MatchImages(first, firstInfo, second, secondInfo);
+		// auto result = m_frameProcessor.MatchImages(first, firstInfo, second, secondInfo);
 
 		// Получаем на основе сравнения матрицу афинных преобразований
-		cv::Mat move = m_estimator.EstimateMovements(result);
+		// cv::Mat move = m_estimator.EstimateMovements(result);
 
 		// Записываем время обработки и смещения
 		clock_t end = 1000*clock()/CLOCKS_PER_SEC;
 		time << (end-start) << std::endl;
 		sum+=(end-start);
 		frames++;
-		shifts << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
+		// shifts << "x shift: " << move.at<double>(0,2) << ", y shift: " << move.at<double>(1,2) <<std::endl;
 
 		clock_t start_lk = 1000*clock()/CLOCKS_PER_SEC;
 		out = opticalflow.GetOpticalFlow(second);
@@ -121,7 +130,11 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		time_lk << (end_lk - start_lk) << std::endl;
 		sum_lk+=(end_lk - start_lk);
 
+		std::cout << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
 		shifts_lk << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
+
+		// cv::imshow("stream", second);
+		// cv::waitKey(30);	
 	}
 
 	time << "Общее время обработки: " << sum << ", Среднее время обработки: " << (float)(sum/frames) << ", Кол-во кадров: " << frames << std::endl;
