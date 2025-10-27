@@ -17,9 +17,6 @@ public:
     UartMAVlink();
     UartMAVlink(const char *uart_name_, int baudrate_);
     ~UartMAVlink();
-    bool Start(const char* uart_port = "/dev/ttyAMA0", int baudrate = B115200) {
-        return UartInit(uart_port, baudrate);
-    }
 
     int read_message(mavlink_message_t &message);
 	int write_message(const mavlink_message_t &message);
@@ -46,13 +43,9 @@ private:
 	int  baudrate;
 	bool is_open;
 
-	int  _open_port(const char* port);
+	int  _open_port(const char* port = "/dev/ttyAMA0");
 	bool _setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control);
 	int  _read_port(uint8_t &cp);
 	int _write_port(char *buf, unsigned len);
-
-    
-    bool UartInit(const char* device, int baudrate);
-    void SendMavlinkMessage(mavlink_message_t& msg); 
 
 };

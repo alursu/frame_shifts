@@ -1,6 +1,91 @@
 
 #include "uartmavlink.hpp"
 
+UartMAVlink::UartMAVlink()
+{
+	initialize_defaults();
+}
+
+UartMAVlink::UartMAVlink(const char *uart_name_, int baudrate_)
+{
+	initialize_defaults();
+	uart_name = uart_name_;
+	baudrate  = baudrate_;
+}
+
+UartMAVlink::~UartMAVlink()
+{
+	pthread_mutex_destroy(&lock);
+	stop();
+}
+
+void UartMAVlink::initialize_defaults()
+{
+	// Initialize attributes
+	debug  = false;
+	uart_fd     = -1;
+	is_open = false;
+
+	uart_name = (char*)"/dev/ttyUSB0";
+	baudrate  = 57600;
+
+	// Start mutex
+	int result = pthread_mutex_init(&lock, NULL);
+	if ( result != 0 )
+	{
+		printf("\n mutex init failed\n");
+		throw 1;
+	}
+}
+
+void UartMAVlink::start()
+{
+		// --------------------------------------------------------------------------
+	//   OPEN PORT
+	// --------------------------------------------------------------------------
+	printf("OPEN PORT\n");
+
+	uart_fd = _open_port(uart_name);
+
+	// Check success
+	if (uart_fd == -1)
+	{
+		printf("failure, could not open port.\n");
+		throw EXIT_FAILURE;
+	}
+
+	// --------------------------------------------------------------------------
+	//   SETUP PORT
+	// --------------------------------------------------------------------------
+	bool success = _setup_port(baudrate, 8, 1, false, false);
+
+	// --------------------------------------------------------------------------
+	//   CHECK STATUS
+	// --------------------------------------------------------------------------
+	if (!success)
+	{
+		printf("failure, could not configure port.\n");
+		throw EXIT_FAILURE;
+	}
+	if (uart_fd <= 0)
+	{
+		printf("Connection attempt to port %s with %d baud, 8N1 failed, exiting.\n", uart_name, baudrate);
+		throw EXIT_FAILURE;
+	}
+
+	// --------------------------------------------------------------------------
+	//   CONNECTED!
+	// --------------------------------------------------------------------------
+	printf("Connected to %s with %d baud, 8 data bits, no parity, 1 stop bit (8N1)\n", uart_name, baudrate);
+	lastStatus.packet_rx_drop_count = 0;
+
+	is_open = true;
+
+	printf("\n");
+
+	return;
+}
+
 int UartMAVlink::_open_port(const char *port)
 {
 	// Open serial port
@@ -12,7 +97,7 @@ int UartMAVlink::_open_port(const char *port)
 	if (uart_fd == -1)
 	{
 		/* Could not open the port. */
-		return(-1);
+		return -1;
 	}
 
 	// Finalize
@@ -21,7 +106,6 @@ int UartMAVlink::_open_port(const char *port)
 		fcntl(uart_fd, F_SETFL, 0);
 	}
 
-	// Done!
 	return uart_fd;
 }
 
@@ -38,7 +122,7 @@ bool UartMAVlink::_setup_port(int baud, int data_bits, int stop_bits, bool parit
 	struct termios  config;
 	if(tcgetattr(uart_fd, &config) < 0)
 	{
-		fprintf(stderr, "\nERROR: could not read configuration of fd %d\n", uart_fd);
+		std::cerr << "ERROR: could not read configuration of uart_fd" << uart_fd << std::endl;
 		return false;
 	}
 
@@ -177,182 +261,6 @@ int UartMAVlink::_read_port(uint8_t &cp)
 	return result;
 }
 
-int UartMAVlink::_write_port(char *buf, unsigned len)
-{
-	// Lock
-	pthread_mutex_lock(&lock);
-
-	// Write packet via serial link
-	const int bytesWritten = static_cast<int>(write(MAV_ODID_UA_TYPE_FREE_FALL_PARACHUTE, buf, len));
-
-	// Wait until all data has been written
-	tcdrain(uart_fd);
-
-	// Unlock
-	pthread_mutex_unlock(&lock);
-
-
-	return bytesWritten;
-}
-
-bool UartMAVlink::UartInit(const char *device, int baudrate)
-{
-    uart_fd = open(device, O_RDWR | O_NOCTTY);
-    if (uart_fd < 0) return false;
-
-    struct termios options;
-    tcgetattr(uart_fd, &options);
-    cfsetispeed(&options, baudrate);
-    cfsetospeed(&options, baudrate);
-        
-    options.c_cflag = (options.c_cflag & ~CSIZE) | CS8;
-    options.c_cflag &= ~(PARENB | CSTOPB | CRTSCTS);
-    options.c_cflag |= (CLOCAL | CREAD);
-    options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
-    options.c_iflag &= ~(IXON | IXOFF | IXANY);
-    options.c_oflag &= ~OPOST;
-        
-    options.c_cc[VMIN] = 0;
-    options.c_cc[VTIME] = 10;
-        
-    return tcsetattr(uart_fd, TCSANOW, &options) == 0;
-}
-
-void UartMAVlink::SendMavlinkMessage(mavlink_message_t& msg) {
-    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
-    int len = mavlink_msg_to_send_buffer(buffer, &msg);
-    write(uart_fd, buffer, len);
-}
-
-void UartMAVlink::start()
-{
-		// --------------------------------------------------------------------------
-	//   OPEN PORT
-	// --------------------------------------------------------------------------
-	printf("OPEN PORT\n");
-
-	uart_fd = _open_port(uart_name);
-
-	// Check success
-	if (uart_fd == -1)
-	{
-		printf("failure, could not open port.\n");
-		throw EXIT_FAILURE;
-	}
-
-	// --------------------------------------------------------------------------
-	//   SETUP PORT
-	// --------------------------------------------------------------------------
-	bool success = _setup_port(baudrate, 8, 1, false, false);
-
-	// --------------------------------------------------------------------------
-	//   CHECK STATUS
-	// --------------------------------------------------------------------------
-	if (!success)
-	{
-		printf("failure, could not configure port.\n");
-		throw EXIT_FAILURE;
-	}
-	if (uart_fd <= 0)
-	{
-		printf("Connection attempt to port %s with %d baud, 8N1 failed, exiting.\n", uart_name, baudrate);
-		throw EXIT_FAILURE;
-	}
-
-	// --------------------------------------------------------------------------
-	//   CONNECTED!
-	// --------------------------------------------------------------------------
-	printf("Connected to %s with %d baud, 8 data bits, no parity, 1 stop bit (8N1)\n", uart_name, baudrate);
-	lastStatus.packet_rx_drop_count = 0;
-
-	is_open = true;
-
-	printf("\n");
-
-	return;
-}
-
-void UartMAVlink::stop()
-{
-	printf("CLOSE PORT\n");
-
-	int result = close(uart_fd);
-
-	if ( result )
-	{
-		fprintf(stderr,"WARNING: Error on port close (%i)\n", result );
-	}
-
-	is_open = false;
-
-	printf("\n");
-
-}
-
-void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y,
-                                  float quality, float ground_distance)
-{
-    mavlink_message_t msg;
-    mavlink_optical_flow_t optical_flow;
-        
-    // Заполнение данных оптического потока
-    optical_flow.time_usec = GetTimeUsec();
-    optical_flow.sensor_id = 1;
-    optical_flow.flow_x = flow_x;      // пиксели/сек
-    optical_flow.flow_y = flow_y;      // пиксели/сек
-    optical_flow.flow_comp_m_x = 0;
-    optical_flow.flow_comp_m_y = 0;
-    optical_flow.quality = quality;    // 0-255 (качество)
-    optical_flow.ground_distance = ground_distance; // метры
-    optical_flow.flow_rate_x = 0;
-    optical_flow.flow_rate_y = 0;
-        
-    mavlink_msg_optical_flow_encode(1, 1, &msg, &optical_flow);
-    SendMavlinkMessage(msg);
-}
-
-uint64_t UartMAVlink::GetTimeUsec() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
-}
-
-void UartMAVlink::initialize_defaults()
-{
-	// Initialize attributes
-	debug  = false;
-	uart_fd     = -1;
-	is_open = false;
-
-	uart_name = (char*)"/dev/ttyUSB0";
-	baudrate  = 57600;
-
-	// Start mutex
-	int result = pthread_mutex_init(&lock, NULL);
-	if ( result != 0 )
-	{
-		printf("\n mutex init failed\n");
-		throw 1;
-	}
-}
-
-UartMAVlink::UartMAVlink()
-{
-	initialize_defaults();
-}
-
-UartMAVlink::UartMAVlink(const char *uart_name_, int baudrate_)
-{
-	initialize_defaults();
-	uart_name = uart_name_;
-	baudrate  = baudrate_;
-}
-
-UartMAVlink::~UartMAVlink()
-{
-	pthread_mutex_destroy(&lock);
-}
-
 int UartMAVlink::read_message(mavlink_message_t &message)
 {
 	uint8_t          cp;
@@ -426,6 +334,75 @@ int UartMAVlink::read_message(mavlink_message_t &message)
 
 	// Done!
 	return msgReceived;
+}
+
+int UartMAVlink::_write_port(char *buf, unsigned len)
+{
+	// Lock
+	pthread_mutex_lock(&lock);
+
+	// Write packet via serial link
+	const int bytesWritten = static_cast<int>(write(MAV_ODID_UA_TYPE_FREE_FALL_PARACHUTE, buf, len));
+
+	// Wait until all data has been written
+	tcdrain(uart_fd);
+
+	// Unlock
+	pthread_mutex_unlock(&lock);
+
+
+	return bytesWritten;
+}
+
+void UartMAVlink::stop()
+{
+	printf("CLOSE PORT\n");
+
+	int result = close(uart_fd);
+
+	if ( result )
+	{
+		fprintf(stderr,"WARNING: Error on port close (%i)\n", result );
+	}
+
+	is_open = false;
+
+	printf("\n");
+
+}
+
+void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y,
+                                  float quality, float ground_distance)
+{
+    mavlink_message_t msg;
+    mavlink_optical_flow_t optical_flow;
+        
+    // Заполнение данных оптического потока
+    optical_flow.time_usec = GetTimeUsec();
+    optical_flow.sensor_id = 1;
+    optical_flow.flow_x = flow_x;      // пиксели/сек
+    optical_flow.flow_y = flow_y;      // пиксели/сек
+    optical_flow.flow_comp_m_x = 0;
+    optical_flow.flow_comp_m_y = 0;
+    optical_flow.quality = quality;    // 0-255 (качество)
+    optical_flow.ground_distance = ground_distance; // метры
+    optical_flow.flow_rate_x = 0;
+    optical_flow.flow_rate_y = 0;
+        
+    mavlink_msg_optical_flow_encode(1, 1, &msg, &optical_flow);
+    SendMavlinkMessage(msg);
+}
+
+void UartMAVlink::SendMavlinkMessage(mavlink_message_t& msg) {
+    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+    int len = mavlink_msg_to_send_buffer(buffer, &msg);
+    write(uart_fd, buffer, len);
+}
+
+uint64_t UartMAVlink::GetTimeUsec() {
+    struct timespec ts;
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
 int UartMAVlink::write_message(const mavlink_message_t &message)
