@@ -3,12 +3,12 @@
 
 UartMAVlink::UartMAVlink()
 {
-	initialize_defaults();
+	InitializeDefaults();
 }
 
 UartMAVlink::UartMAVlink(const char *uart_name_, int baudrate_)
 {
-	initialize_defaults();
+	InitializeDefaults();
 	uart_name = uart_name_;
 	baudrate  = baudrate_;
 }
@@ -16,19 +16,11 @@ UartMAVlink::UartMAVlink(const char *uart_name_, int baudrate_)
 UartMAVlink::~UartMAVlink()
 {
 	pthread_mutex_destroy(&lock);
-	stop();
+	Stop();
 }
 
-void UartMAVlink::initialize_defaults()
+void UartMAVlink::InitializeDefaults()
 {
-	// Initialize attributes
-	debug  = false;
-	uart_fd     = -1;
-	is_open = false;
-
-	uart_name = (char*)"/dev/ttyUSB0";
-	baudrate  = 57600;
-
 	// Start mutex
 	int result = pthread_mutex_init(&lock, NULL);
 	if ( result != 0 )
@@ -38,14 +30,11 @@ void UartMAVlink::initialize_defaults()
 	}
 }
 
-void UartMAVlink::start()
+void UartMAVlink::Start()
 {
-		// --------------------------------------------------------------------------
-	//   OPEN PORT
-	// --------------------------------------------------------------------------
 	printf("OPEN PORT\n");
 
-	uart_fd = _open_port(uart_name);
+	uart_fd = OpenPort(uart_name);
 
 	// Check success
 	if (uart_fd == -1)
@@ -54,14 +43,8 @@ void UartMAVlink::start()
 		throw EXIT_FAILURE;
 	}
 
-	// --------------------------------------------------------------------------
-	//   SETUP PORT
-	// --------------------------------------------------------------------------
-	bool success = _setup_port(baudrate, 8, 1, false, false);
+	bool success = SetupPort(baudrate, 8, 1, false, false);
 
-	// --------------------------------------------------------------------------
-	//   CHECK STATUS
-	// --------------------------------------------------------------------------
 	if (!success)
 	{
 		printf("failure, could not configure port.\n");
@@ -73,9 +56,6 @@ void UartMAVlink::start()
 		throw EXIT_FAILURE;
 	}
 
-	// --------------------------------------------------------------------------
-	//   CONNECTED!
-	// --------------------------------------------------------------------------
 	printf("Connected to %s with %d baud, 8 data bits, no parity, 1 stop bit (8N1)\n", uart_name, baudrate);
 	lastStatus.packet_rx_drop_count = 0;
 
@@ -86,7 +66,7 @@ void UartMAVlink::start()
 	return;
 }
 
-int UartMAVlink::_open_port(const char *port)
+int UartMAVlink::OpenPort(const char *port)
 {
 	// Open serial port
 	// O_RDWR - Read and write
@@ -109,7 +89,7 @@ int UartMAVlink::_open_port(const char *port)
 	return uart_fd;
 }
 
-bool UartMAVlink::_setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
+bool UartMAVlink::SetupPort(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
 {
 	// Check file descriptor
 	if(!isatty(uart_fd))
@@ -171,84 +151,15 @@ bool UartMAVlink::_setup_port(int baud, int data_bits, int stop_bits, bool parit
 	////tcgetattr(fd, &options);
 
 	// Apply baudrate
-	switch (baud)
+	if (cfsetispeed(&config, baud) < 0 || cfsetospeed(&config, baud) < 0)
 	{
-		case 1200:
-			if (cfsetispeed(&config, B1200) < 0 || cfsetospeed(&config, B1200) < 0)
-			{
-				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
-				return false;
-			}
-			break;
-		case 1800:
-			cfsetispeed(&config, B1800);
-			cfsetospeed(&config, B1800);
-			break;
-		case 9600:
-			cfsetispeed(&config, B9600);
-			cfsetospeed(&config, B9600);
-			break;
-		case 19200:
-			cfsetispeed(&config, B19200);
-			cfsetospeed(&config, B19200);
-			break;
-		case 38400:
-			if (cfsetispeed(&config, B38400) < 0 || cfsetospeed(&config, B38400) < 0)
-			{
-				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
-				return false;
-			}
-			break;
-		case 57600:
-			if (cfsetispeed(&config, B57600) < 0 || cfsetospeed(&config, B57600) < 0)
-			{
-				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
-				return false;
-			}
-			break;
-		case 115200:
-			if (cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)
-			{
-				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
-				return false;
-			}
-			break;
-
-		// These two non-standard (by the 70'ties ) rates are fully supported on
-		// current Debian and Mac OS versions (tested since 2010).
-		case 460800:
-			if (cfsetispeed(&config, B460800) < 0 || cfsetospeed(&config, B460800) < 0)
-			{
-				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
-				return false;
-			}
-			break;
-		case 921600:
-			if (cfsetispeed(&config, B921600) < 0 || cfsetospeed(&config, B921600) < 0)
-			{
-				fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
-				return false;
-			}
-			break;
-		default:
-			fprintf(stderr, "ERROR: Desired baud rate %d could not be set, aborting.\n", baud);
-			return false;
-
-			break;
-	}
-
-	// Finally, apply the configuration
-	if(tcsetattr(uart_fd, TCSAFLUSH, &config) < 0)
-	{
-		fprintf(stderr, "\nERROR: could not set configuration of fd %d\n", uart_fd);
+		fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 		return false;
 	}
-
-	// Done!
 	return true;
 }
 
-int UartMAVlink::_read_port(uint8_t &cp)
+int UartMAVlink::ReadPort(uint8_t &cp)
 {
 	// Lock
 	pthread_mutex_lock(&lock);
@@ -261,18 +172,14 @@ int UartMAVlink::_read_port(uint8_t &cp)
 	return result;
 }
 
-int UartMAVlink::read_message(mavlink_message_t &message)
+int UartMAVlink::ReadMessage(mavlink_message_t &message)
 {
 	uint8_t          cp;
 	mavlink_status_t status;
 	uint8_t          msgReceived = false;
 
-	// --------------------------------------------------------------------------
-	//   READ FROM PORT
-	// --------------------------------------------------------------------------
-
 	// this function locks the port during read
-	int result = _read_port(cp);
+	int result = ReadPort(cp);
 
 
 	// --------------------------------------------------------------------------
@@ -292,8 +199,6 @@ int UartMAVlink::read_message(mavlink_message_t &message)
 		}
 		lastStatus = status;
 	}
-
-	// Couldn't read from port
 	else
 	{
 		fprintf(stderr, "ERROR: Could not read from fd %d\n", uart_fd);
@@ -336,7 +241,7 @@ int UartMAVlink::read_message(mavlink_message_t &message)
 	return msgReceived;
 }
 
-int UartMAVlink::_write_port(char *buf, unsigned len)
+int UartMAVlink::WritePort(char *buf, unsigned len)
 {
 	// Lock
 	pthread_mutex_lock(&lock);
@@ -354,7 +259,7 @@ int UartMAVlink::_write_port(char *buf, unsigned len)
 	return bytesWritten;
 }
 
-void UartMAVlink::stop()
+void UartMAVlink::Stop()
 {
 	printf("CLOSE PORT\n");
 
@@ -371,8 +276,8 @@ void UartMAVlink::stop()
 
 }
 
-void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y,
-                                  float quality, float ground_distance)
+void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
+								 float float_rate_y, float quality, float ground_distance)
 {
     mavlink_message_t msg;
     mavlink_optical_flow_t optical_flow;
@@ -382,21 +287,15 @@ void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y,
     optical_flow.sensor_id = 1;
     optical_flow.flow_x = flow_x;      // пиксели/сек
     optical_flow.flow_y = flow_y;      // пиксели/сек
-    optical_flow.flow_comp_m_x = 0;
-    optical_flow.flow_comp_m_y = 0;
-    optical_flow.quality = quality;    // 0-255 (качество)
-    optical_flow.ground_distance = ground_distance; // метры
+    optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+    optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+    optical_flow.quality = quality;    // 0-255 (качество, по умолчанию 255)
+    optical_flow.ground_distance = ground_distance; // метры (по умолчанию < 0, т.к. не знаем высоту)
     optical_flow.flow_rate_x = 0;
     optical_flow.flow_rate_y = 0;
         
     mavlink_msg_optical_flow_encode(1, 1, &msg, &optical_flow);
-    SendMavlinkMessage(msg);
-}
-
-void UartMAVlink::SendMavlinkMessage(mavlink_message_t& msg) {
-    uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
-    int len = mavlink_msg_to_send_buffer(buffer, &msg);
-    write(uart_fd, buffer, len);
+    std::cout << "bytes written: " << WriteMessage(msg) << std::endl;
 }
 
 uint64_t UartMAVlink::GetTimeUsec() {
@@ -405,7 +304,7 @@ uint64_t UartMAVlink::GetTimeUsec() {
     return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
-int UartMAVlink::write_message(const mavlink_message_t &message)
+int UartMAVlink::WriteMessage(const mavlink_message_t &message)
 {
 	char buf[300];
 
@@ -413,7 +312,7 @@ int UartMAVlink::write_message(const mavlink_message_t &message)
 	unsigned len = mavlink_msg_to_send_buffer((uint8_t*)buf, &message);
 
 	// Write buffer to serial port, locks port while writing
-	int bytesWritten = _write_port(buf,len);
+	int bytesWritten = WritePort(buf,len);
 
 	return bytesWritten;
 }

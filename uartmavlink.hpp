@@ -5,7 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
-#include <pthread.h> // This uses POSIX Threads
+#include <pthread.h> 
 #include <signal.h>
 
 #include "include/common/mavlink.h"
@@ -18,34 +18,35 @@ public:
     UartMAVlink(const char *uart_name_, int baudrate_);
     ~UartMAVlink();
 
-    int read_message(mavlink_message_t &message);
-	int write_message(const mavlink_message_t &message);
-
-	bool is_running(){
+	bool IsRunning(){
 		return is_open;
 	}
-	void start();
-	void stop();
-    
-    void SendOpticalFlow(float flow_x, float flow_y, float quality, float ground_distance);
-    uint64_t GetTimeUsec();
+	void Start();
+	void Stop();
+	void SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
+						float float_rate_y, float quality = 255, float ground_distance = -1);
 
 private:
-    int uart_fd;
+    int uart_fd = -1;
 
     mavlink_status_t lastStatus;
 	pthread_mutex_t  lock;
 
-	void initialize_defaults();
+	void InitializeDefaults();
 
-	bool debug;
-	const char *uart_name;
-	int  baudrate;
-	bool is_open;
+	bool debug = false;
+	const char *uart_name = (char*)"/dev/ttyAMA0";
+	int  baudrate = 115200;
+	bool is_open = false;
 
-	int  _open_port(const char* port = "/dev/ttyAMA0");
-	bool _setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control);
-	int  _read_port(uint8_t &cp);
-	int _write_port(char *buf, unsigned len);
+	int  OpenPort(const char* port = "/dev/ttyAMA0");
+	bool SetupPort(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control);
+
+	int  ReadPort(uint8_t &cp);
+	int  WritePort(char *buf, unsigned len);
+	int ReadMessage(mavlink_message_t &message);
+	int WriteMessage(const mavlink_message_t &message);
+
+	uint64_t GetTimeUsec();
 
 };
