@@ -151,7 +151,7 @@ bool UartMAVlink::SetupPort(int baud, int data_bits, int stop_bits, bool parity,
 	////tcgetattr(fd, &options);
 
 	// Apply baudrate
-	if (cfsetispeed(&config, baud) < 0 || cfsetospeed(&config, baud) < 0)
+	if (cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)
 	{
 		fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
 		return false;
@@ -247,7 +247,7 @@ int UartMAVlink::WritePort(char *buf, unsigned len)
 	pthread_mutex_lock(&lock);
 
 	// Write packet via serial link
-	const int bytesWritten = static_cast<int>(write(MAV_ODID_UA_TYPE_FREE_FALL_PARACHUTE, buf, len));
+	const int bytesWritten = static_cast<int>(write(uart_fd, buf, len));
 
 	// Wait until all data has been written
 	tcdrain(uart_fd);
