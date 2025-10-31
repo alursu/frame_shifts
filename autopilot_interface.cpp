@@ -17,119 +17,6 @@ get_time_usec()
 	return _time_stamp.tv_sec*1000000 + _time_stamp.tv_usec;
 }
 
-
-// ----------------------------------------------------------------------------------
-//   Setpoint Helper Functions
-// ----------------------------------------------------------------------------------
-
-// choose one of the next three
-
-/*
- * Set target local ned position
- *
- * Modifies a mavlink_set_position_target_local_ned_t struct with target XYZ locations
- * in the Local NED frame, in meters.
- */
-void
-set_position(float x, float y, float z, mavlink_set_position_target_local_ned_t &sp)
-{
-	sp.type_mask =
-		MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_POSITION;
-
-	sp.coordinate_frame = MAV_FRAME_LOCAL_NED;
-
-	sp.x   = x;
-	sp.y   = y;
-	sp.z   = z;
-
-	printf("POSITION SETPOINT XYZ = [ %.4f , %.4f , %.4f ] \n", sp.x, sp.y, sp.z);
-
-}
-
-/*
- * Set target local ned velocity
- *
- * Modifies a mavlink_set_position_target_local_ned_t struct with target VX VY VZ
- * velocities in the Local NED frame, in meters per second.
- */
-void
-set_velocity(float vx, float vy, float vz, mavlink_set_position_target_local_ned_t &sp)
-{
-	sp.type_mask =
-		MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_VELOCITY     ;
-
-	sp.coordinate_frame = MAV_FRAME_LOCAL_NED;
-
-	sp.vx  = vx;
-	sp.vy  = vy;
-	sp.vz  = vz;
-
-	printf("VELOCITY SETPOINT UVW = [ %.4f , %.4f , %.4f ] \n", sp.vx, sp.vy, sp.vz);
-
-}
-
-/*
- * Set target local ned acceleration
- *
- * Modifies a mavlink_set_position_target_local_ned_t struct with target AX AY AZ
- * accelerations in the Local NED frame, in meters per second squared.
- */
-void
-set_acceleration(float ax, float ay, float az, mavlink_set_position_target_local_ned_t &sp)
-{
-
-	// NOT IMPLEMENTED
-	fprintf(stderr,"set_acceleration doesn't work yet \n");
-	throw 1;
-
-
-	sp.type_mask =
-		MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_ACCELERATION &
-		MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_VELOCITY     ;
-
-	sp.coordinate_frame = MAV_FRAME_LOCAL_NED;
-
-	sp.afx  = ax;
-	sp.afy  = ay;
-	sp.afz  = az;
-}
-
-// the next two need to be called after one of the above
-
-/*
- * Set target local ned yaw
- *
- * Modifies a mavlink_set_position_target_local_ned_t struct with a target yaw
- * in the Local NED frame, in radians.
- */
-void
-set_yaw(float yaw, mavlink_set_position_target_local_ned_t &sp)
-{
-	sp.type_mask &=
-		MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_ANGLE ;
-
-	sp.yaw  = yaw;
-
-	printf("POSITION SETPOINT YAW = %.4f \n", sp.yaw);
-
-}
-
-/*
- * Set target local ned yaw rate
- *
- * Modifies a mavlink_set_position_target_local_ned_t struct with a target yaw rate
- * in the Local NED frame, in radians per second.
- */
-void
-set_yaw_rate(float yaw_rate, mavlink_set_position_target_local_ned_t &sp)
-{
-	sp.type_mask &=
-		MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_RATE ;
-
-	sp.yaw_rate  = yaw_rate;
-}
-
-
 // ----------------------------------------------------------------------------------
 //   Autopilot Interface Class
 // ----------------------------------------------------------------------------------
@@ -165,19 +52,6 @@ AutopilotInterface(UartInterface *port_)
 AutopilotInterface::
 ~AutopilotInterface()
 {}
-
-
-// ------------------------------------------------------------------------------
-//   Update Setpoint
-// ------------------------------------------------------------------------------
-void
-AutopilotInterface::
-update_setpoint(mavlink_set_position_target_local_ned_t setpoint)
-{
-	std::lock_guard<std::mutex> lock(current_setpoint.mutex);
-	current_setpoint.data = setpoint;
-}
-
 
 // ------------------------------------------------------------------------------
 //   Read Messages
@@ -318,14 +192,6 @@ read_messages()
 		// Check for receipt of all items
 		received_all =
 				this_timestamps.heartbeat                  &&
-//				this_timestamps.battery_status             &&
-//				this_timestamps.radio_status               &&
-//				this_timestamps.local_position_ned         &&
-//				this_timestamps.global_position_int        &&
-//				this_timestamps.position_target_local_ned  &&
-//				this_timestamps.position_target_global_int &&
-//				this_timestamps.highres_imu                &&
-//				this_timestamps.attitude                   &&
 				this_timestamps.sys_status
 				;
 
@@ -368,17 +234,17 @@ write_setpoint()
 	// --------------------------------------------------------------------------
 
 	// pull from position target
-	mavlink_set_position_target_local_ned_t sp;
+	mavlink_optical_flow_t optical_flow;
 	{
-		std::lock_guard<std::mutex> lock(current_setpoint.mutex);
-		sp = current_setpoint.data;
+		std::lock_guard<std::mutex> lock(current_optical_flow.mutex);
+		optical_flow = current_optical_flow.data;
 	}
 
 	// double check some system parameters
-	if ( not sp.time_boot_ms )
-		sp.time_boot_ms = (uint32_t) (get_time_usec()/1000);
-	sp.target_system    = system_id;
-	sp.target_component = autopilot_id;
+	if ( not optical_flow.time_usec)
+		optical_flow.time_usec = (uint32_t) (get_time_usec());
+	optical_flow.sensor_id   = system_id;
+	// sp.target_component = autopilot_id;
 
 
 	// --------------------------------------------------------------------------
@@ -386,7 +252,8 @@ write_setpoint()
 	// --------------------------------------------------------------------------
 
 	mavlink_message_t message;
-	mavlink_msg_set_position_target_local_ned_encode(system_id, companion_id, &message, &sp);
+	mavlink_msg_optical_flow_encode(system_id, companion_id, &message, &optical_flow);
+	// mavlink_msg_set_position_target_local_ned_encode(system_id, companion_id, &message, &sp);
 
 
 	// --------------------------------------------------------------------------
@@ -398,7 +265,7 @@ write_setpoint()
 
 	// check the write
 	if ( len <= 0 )
-		fprintf(stderr,"WARNING: could not send POSITION_TARGET_LOCAL_NED \n");
+		fprintf(stderr,"WARNING: could not send OPTICAL_FLOW \n");
 	//	else
 	//		printf("%lu POSITION_TARGET  = [ %f , %f , %f ] \n", write_count, position_target.x, position_target.y, position_target.z);
 
@@ -441,9 +308,9 @@ enable_offboard_control()
 }
 
 
-// ------------------------------------------------------------------------------
-//   Stop Off-Board Mode
-// ------------------------------------------------------------------------------
+// // ------------------------------------------------------------------------------
+// //   Stop Off-Board Mode
+// // ------------------------------------------------------------------------------
 void
 AutopilotInterface::
 disable_offboard_control()
@@ -474,42 +341,6 @@ disable_offboard_control()
 
 	} // end: if offboard_status
 
-}
-
-// ------------------------------------------------------------------------------
-//   Arm
-// ------------------------------------------------------------------------------
-int
-AutopilotInterface::
-arm_disarm( bool flag )
-{
-	if(flag)
-	{
-		printf("ARM ROTORS\n");
-	}
-	else
-	{
-		printf("DISARM ROTORS\n");
-	}
-
-	// Prepare command for off-board mode
-	mavlink_command_long_t com = { 0 };
-	com.target_system    = system_id;
-	com.target_component = autopilot_id;
-	com.command          = MAV_CMD_COMPONENT_ARM_DISARM;
-	com.confirmation     = true;
-	com.param1           = (float) flag;
-	com.param2           = 21196;
-
-	// Encode
-	mavlink_message_t message;
-	mavlink_msg_command_long_encode(system_id, companion_id, &message, &com);
-
-	// Send the message
-	int len = port->WriteMessage(message);
-
-	// Done!
-	return len;
 }
 
 // ------------------------------------------------------------------------------
@@ -614,38 +445,6 @@ start()
 		printf("GOT AUTOPILOT COMPONENT ID: %i\n", autopilot_id);
 		printf("\n");
 	}
-
-
-	// --------------------------------------------------------------------------
-	//   GET INITIAL POSITION
-	// --------------------------------------------------------------------------
-
-	// Wait for initial position ned
-	while ( not ( current_messages.time_stamps.local_position_ned &&
-				  current_messages.time_stamps.attitude            )  )
-	{
-		if ( time_to_exit )
-			return;
-		usleep(500000);
-	}
-
-	// copy initial position ned
-	Mavlink_Messages local_data = current_messages;
-	initial_position.x        = local_data.local_position_ned.x;
-	initial_position.y        = local_data.local_position_ned.y;
-	initial_position.z        = local_data.local_position_ned.z;
-	initial_position.vx       = local_data.local_position_ned.vx;
-	initial_position.vy       = local_data.local_position_ned.vy;
-	initial_position.vz       = local_data.local_position_ned.vz;
-	initial_position.yaw      = local_data.attitude.yaw;
-	initial_position.yaw_rate = local_data.attitude.yawspeed;
-
-	printf("INITIAL POSITION XYZ = [ %.4f , %.4f , %.4f ] \n", initial_position.x, initial_position.y, initial_position.z);
-	printf("INITIAL POSITION YAW = %.4f \n", initial_position.yaw);
-	printf("\n");
-
-	// we need this before starting the write thread
-
 
 	// --------------------------------------------------------------------------
 	//   WRITE THREAD
@@ -789,22 +588,35 @@ AutopilotInterface::
 write_thread(void)
 {
 	// signal startup
-	writing_status = 2;
+	// writing_status = 2;
 
-	// prepare an initial setpoint, just stay put
-	mavlink_set_position_target_local_ned_t sp;
-	sp.type_mask = MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_VELOCITY &
-				   MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_RATE;
-	sp.coordinate_frame = MAV_FRAME_LOCAL_NED;
-	sp.vx       = 0.0;
-	sp.vy       = 0.0;
-	sp.vz       = 0.0;
-	sp.yaw_rate = 0.0;
+	// // prepare an initial setpoint, just stay put
+	// mavlink_set_position_target_local_ned_t sp;
+	// sp.type_mask = MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_VELOCITY &
+	// 			   MAVLINK_MSG_SET_POSITION_TARGET_LOCAL_NED_YAW_RATE;
+	// sp.coordinate_frame = MAV_FRAME_LOCAL_NED;
+	// sp.vx       = 0.0;
+	// sp.vy       = 0.0;
+	// sp.vz       = 0.0;
+	// sp.yaw_rate = 0.0;
+
+    mavlink_optical_flow_t optical_flow;
+        
+    // Заполнение данных оптического потока
+    optical_flow.sensor_id = 1;
+    optical_flow.flow_x = 0;      // пиксели/сек
+    optical_flow.flow_y = 0;      // пиксели/сек
+    optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+    optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+    optical_flow.quality = 255;    // 0-255 (качество, по умолчанию 255)
+    optical_flow.ground_distance = -1; // метры (по умолчанию < 0, т.к. не знаем высоту)
+    optical_flow.flow_rate_x = 0;
+    optical_flow.flow_rate_y = 0;
 
 	// set position target
 	{
-		std::lock_guard<std::mutex> lock(current_setpoint.mutex);
-		current_setpoint.data = sp;
+		std::lock_guard<std::mutex> lock(current_optical_flow.mutex);
+		current_optical_flow.data = optical_flow;
 	}
 
 	// write a message and signal writing
@@ -858,6 +670,3 @@ start_autopilot_interface_write_thread(void *args)
 	// done!
 	return NULL;
 }
-
-
-

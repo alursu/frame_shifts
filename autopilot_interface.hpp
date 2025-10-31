@@ -75,11 +75,6 @@
 
 // helper functions
 uint64_t get_time_usec();
-void set_position(float x, float y, float z, mavlink_set_position_target_local_ned_t &sp);
-void set_velocity(float vx, float vy, float vz, mavlink_set_position_target_local_ned_t &sp);
-void set_acceleration(float ax, float ay, float az, mavlink_set_position_target_local_ned_t &sp);
-void set_yaw(float yaw, mavlink_set_position_target_local_ned_t &sp);
-void set_yaw_rate(float yaw_rate, mavlink_set_position_target_local_ned_t &sp);
 
 void* start_autopilot_interface_read_thread(void *args);
 void* start_autopilot_interface_write_thread(void *args);
@@ -215,11 +210,9 @@ public:
 	Mavlink_Messages current_messages;
 	mavlink_set_position_target_local_ned_t initial_position;
 
-	void update_setpoint(mavlink_set_position_target_local_ned_t setpoint);
 	void read_messages();
 	int  write_message(mavlink_message_t message);
 
-	int	 arm_disarm( bool flag );
 	void enable_offboard_control();
 	void disable_offboard_control();
 
@@ -245,6 +238,11 @@ private:
 		std::mutex mutex;
 		mavlink_set_position_target_local_ned_t data;
 	} current_setpoint;
+
+		struct {
+		std::mutex mutex;
+		mavlink_optical_flow_t data;
+	} current_optical_flow;
 
 	void read_thread();
 	void write_thread(void);
