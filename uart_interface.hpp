@@ -1,4 +1,5 @@
-#pragma once
+#ifndef UART_INTERFACE_H_
+#define UART_INTERFACE_H_
 
 #include <cstdlib>
 #include <iostream>
@@ -8,15 +9,15 @@
 #include <pthread.h> 
 #include <signal.h>
 
-#include "include/common/mavlink.h"
+#include <common/mavlink.h>
 
-class UartMAVlink {
+class UartInterface {
 
 public:
 
-    UartMAVlink();
-    UartMAVlink(const char *uart_name_, int baudrate_);
-    ~UartMAVlink();
+    UartInterface();
+    UartInterface(const char *uart_name_, int baudrate_);
+    ~UartInterface();
 
 	bool IsRunning(){
 		return is_open;
@@ -25,6 +26,9 @@ public:
 	void Stop();
 	void SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
 						float float_rate_y, float quality = 255, float ground_distance = -1);
+
+	int ReadMessage(mavlink_message_t &message);
+	int WriteMessage(const mavlink_message_t &message);
 
 private:
     int uart_fd = -1;
@@ -44,9 +48,9 @@ private:
 
 	int  ReadPort(uint8_t &cp);
 	int  WritePort(char *buf, unsigned len);
-	int ReadMessage(mavlink_message_t &message);
-	int WriteMessage(const mavlink_message_t &message);
 
 	uint64_t GetTimeUsec();
 
 };
+
+#endif // UART_INTERFACE_H_

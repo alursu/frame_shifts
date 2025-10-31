@@ -11,11 +11,13 @@ find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS} )
 message("OpenCV include dir ${OpenCV_INCLUDE_DIRS}")
 
-
 file(GLOB src *.cpp *.hpp)
 add_executable(frame_shifts ${src})
 target_include_directories(frame_shifts PRIVATE ${OpenCV_INCLUDE_DIRS} )
 target_link_libraries(frame_shifts PUBLIC ${OpenCV_LIBS})
+
+target_include_directories(${PROJECT_NAME} PRIVATE mavlink)
+target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})

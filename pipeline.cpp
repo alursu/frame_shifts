@@ -53,12 +53,12 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	}
 	cv::Rect cropRect;
 	cv::Point2f out;
-	Opticalflow opticalflow;
+	OpticalFlowLkt opticalflow;
 
-	m_uartMAVlink.Start();
+	// m_uartMAVlink.Start();
 
 	// Если захватили кадр - начинаем обработку
-	if (cap->grab() && m_uartMAVlink.IsRunning())
+	if (cap->grab())
 	{
 		// Загружаем изображение. Загружаем в second, чтобы далее сравнивать соседние кадры
 		// Т.е. меняем second и first местами каждый раз, загружаем последующее изображение в 
@@ -140,9 +140,9 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		float flow_rate_x = out.x / (pixels_per_radian_h * (start - previous_img_capture_time));
 		float flow_rate_y = out.y / (pixels_per_radian_v * (start - previous_img_capture_time));
 
-		m_uartMAVlink.SendOpticalFlow(out.x, out.y, flow_rate_x, flow_rate_y);
+		// m_uartMAVlink.SendOpticalFlow(out.x, out.y, flow_rate_x, flow_rate_y);
 
-		// std::cout << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
+		std::cout << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
 		shifts_lk << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
 
 		// cv::imshow("stream", second);

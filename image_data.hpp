@@ -1,4 +1,5 @@
-#pragma once
+#ifndef IMAGE_DATA_H_
+#define IMAGE_DATA_H_
 
 #include <opencv2/opencv.hpp>
 #include <vector>
@@ -30,3 +31,5 @@ struct FeatureInfo
 	std::vector<cv::KeyPoint> keypoints;
 	cv::Mat descriptors;
 };
+
+#endif // IMAGE_DATA_H_

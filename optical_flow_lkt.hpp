@@ -1,9 +1,10 @@
-#pragma once
+#ifndef OPTICAL_FLOW_H_
+#define OPTICAL_FLOW_H_
 
 #include <opencv2/opencv.hpp>
 #include <ctime>
 
-class Opticalflow
+class OpticalFlowLkt
 {
 public:
 	cv::Point2f GetOpticalFlow(const cv::Mat& curr_image, bool include_augmented_image = false, bool rev_flow = false);
@@ -26,3 +27,5 @@ private:
     int maxLevel = 2;
     cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
 };
+
+#endif // OPTICAL_FLOW_H_

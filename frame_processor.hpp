@@ -1,7 +1,8 @@
-#pragma once
+#ifndef FRAME_PROCESSOR_H_
+#define FRAME_PROCESSOR_H_
 
 #include <opencv2/features2d.hpp>
-#include "imagedata.hpp"
+#include "image_data.hpp"
 #include <cmath>
 
 class FrameProcessor
@@ -27,3 +28,5 @@ protected:
     float constexpr static minimumThreshold = 5.0;
     int m_threshold;
 };
+
+#endif // FRAME_PROCESSOR_H_

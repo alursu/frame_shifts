@@ -1,4 +1,4 @@
-#include "imagedata.hpp"
+#include "image_data.hpp"
 
 ImageData::ImageData(void)
 {

@@ -9,11 +9,11 @@
 #include <ctime>
 #include <cmath>
 
-#include "imagedata.hpp"
-#include "frameprocessor.hpp"
-#include "movesetimator.hpp"
-#include "opticalflowlkt.hpp"
-#include "uartmavlink.hpp"
+#include "image_data.hpp"
+#include "frame_processor.hpp"
+#include "moves_estimator.hpp"
+#include "optical_flow_lkt.hpp"
+#include "uart_interface.hpp"
 
 class Pipeline
 {
@@ -24,8 +24,8 @@ public:
 protected:
 
 	FrameProcessor m_frameProcessor;
-	MoveEstimator m_estimator;
-	UartMAVlink m_uartMAVlink;
+	MovesEstimator m_estimator;
+	UartInterface m_uartMAVlink;
 
 	std::vector<ImageData> m_matchedData;
 	std::string m_outFile;

@@ -1,16 +1,16 @@
-#include "movesetimator.hpp"
+#include "moves_estimator.hpp"
 
 using namespace std;
 using namespace cv;
 
-MoveEstimator::MoveEstimator(float angle)
+MovesEstimator::MovesEstimator(float angle)
 {
     // Инициализация матрицы афинных преобразований 1 кадра
     // Задаем угол поворота 1 кадра относительно желаемой СК
     InitMatrix(angle);
 }
 
-cv::Mat MoveEstimator::EstimateMovements(ImageData const &next)
+cv::Mat MovesEstimator::EstimateMovements(ImageData const &next)
 {
     auto keys1 = next.FirstKeypoints();
     auto keys2 = next.SecondKeypoints();
@@ -47,14 +47,14 @@ cv::Mat MoveEstimator::EstimateMovements(ImageData const &next)
     return transform;
 }
 
-void MoveEstimator::InitMatrix(float angle)
+void MovesEstimator::InitMatrix(float angle)
 {
     // Единичная матрица (для угла = 0 и центральной точки = (0,0))
     prev = getRotationMatrix2D(Point2f(0,0), angle, 1);
     prev.push_back(Mat(vector<double>{0,0,1.0}).t());
 }
 
-void MoveEstimator::CosnstantZoom(Mat &mat)
+void MovesEstimator::CosnstantZoom(Mat &mat)
 {
     // Вычисляем коэффициент масштабирования и убираем его из матрицы
     //        Изначальная матрица афинных преобразований

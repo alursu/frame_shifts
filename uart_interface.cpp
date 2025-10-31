@@ -1,25 +1,25 @@
 
-#include "uartmavlink.hpp"
+#include "uart_interface.hpp"
 
-UartMAVlink::UartMAVlink()
+UartInterface::UartInterface()
 {
 	InitializeDefaults();
 }
 
-UartMAVlink::UartMAVlink(const char *uart_name_, int baudrate_)
+UartInterface::UartInterface(const char *uart_name_, int baudrate_)
 {
 	InitializeDefaults();
 	uart_name = uart_name_;
 	baudrate  = baudrate_;
 }
 
-UartMAVlink::~UartMAVlink()
+UartInterface::~UartInterface()
 {
 	pthread_mutex_destroy(&lock);
 	Stop();
 }
 
-void UartMAVlink::InitializeDefaults()
+void UartInterface::InitializeDefaults()
 {
 	// Start mutex
 	int result = pthread_mutex_init(&lock, NULL);
@@ -30,7 +30,7 @@ void UartMAVlink::InitializeDefaults()
 	}
 }
 
-void UartMAVlink::Start()
+void UartInterface::Start()
 {
 	printf("OPEN PORT\n");
 
@@ -66,7 +66,7 @@ void UartMAVlink::Start()
 	return;
 }
 
-int UartMAVlink::OpenPort(const char *port)
+int UartInterface::OpenPort(const char *port)
 {
 	// Open serial port
 	// O_RDWR - Read and write
@@ -89,7 +89,7 @@ int UartMAVlink::OpenPort(const char *port)
 	return uart_fd;
 }
 
-bool UartMAVlink::SetupPort(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
+bool UartInterface::SetupPort(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
 {
 	// Check file descriptor
 	if(!isatty(uart_fd))
@@ -159,7 +159,7 @@ bool UartMAVlink::SetupPort(int baud, int data_bits, int stop_bits, bool parity,
 	return true;
 }
 
-int UartMAVlink::ReadPort(uint8_t &cp)
+int UartInterface::ReadPort(uint8_t &cp)
 {
 	// Lock
 	pthread_mutex_lock(&lock);
@@ -172,7 +172,7 @@ int UartMAVlink::ReadPort(uint8_t &cp)
 	return result;
 }
 
-int UartMAVlink::ReadMessage(mavlink_message_t &message)
+int UartInterface::ReadMessage(mavlink_message_t &message)
 {
 	uint8_t          cp;
 	mavlink_status_t status;
@@ -241,7 +241,7 @@ int UartMAVlink::ReadMessage(mavlink_message_t &message)
 	return msgReceived;
 }
 
-int UartMAVlink::WritePort(char *buf, unsigned len)
+int UartInterface::WritePort(char *buf, unsigned len)
 {
 	// Lock
 	pthread_mutex_lock(&lock);
@@ -259,7 +259,7 @@ int UartMAVlink::WritePort(char *buf, unsigned len)
 	return bytesWritten;
 }
 
-void UartMAVlink::Stop()
+void UartInterface::Stop()
 {
 	printf("CLOSE PORT\n");
 
@@ -276,7 +276,7 @@ void UartMAVlink::Stop()
 
 }
 
-void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
+void UartInterface::SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
 								 float float_rate_y, float quality, float ground_distance)
 {
     mavlink_message_t msg;
@@ -298,13 +298,13 @@ void UartMAVlink::SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x,
     std::cout << "bytes written: " << WriteMessage(msg) << std::endl;
 }
 
-uint64_t UartMAVlink::GetTimeUsec() {
+uint64_t UartInterface::GetTimeUsec() {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
 }
 
-int UartMAVlink::WriteMessage(const mavlink_message_t &message)
+int UartInterface::WriteMessage(const mavlink_message_t &message)
 {
 	char buf[300];
 

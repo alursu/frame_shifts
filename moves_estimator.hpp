@@ -1,13 +1,14 @@
-#pragma once
+#ifndef MOVES_ESTIMATOR_H_
+#define MOVES_ESTIMATOR_H_
 
 #include <opencv2/calib3d.hpp>
 
-#include "imagedata.hpp"
+#include "image_data.hpp"
 
-class MoveEstimator
+class MovesEstimator
 {
 public:
-    explicit MoveEstimator(float angle = 0);
+    explicit MovesEstimator(float angle = 0);
     cv::Mat EstimateMovements(ImageData const & next);
 protected:
     void InitMatrix(float angle);
@@ -15,3 +16,5 @@ protected:
 private:
     cv::Mat prev;
 };
+
+#endif // MOVES_ESTIMATOR_H_

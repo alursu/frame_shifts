@@ -1,6 +1,6 @@
-#include "opticalflowlkt.hpp"
+#include "optical_flow_lkt.hpp"
 
-cv::Point2f Opticalflow::GetOpticalFlow(const cv::Mat& curr_image, bool include_augmented_image, bool rev_flow) {
+cv::Point2f OpticalFlowLkt::GetOpticalFlow(const cv::Mat& curr_image, bool include_augmented_image, bool rev_flow) {
 
     if (curr_image.empty()) {
         return cv::Point2f(0,0);
@@ -126,7 +126,7 @@ cv::Point2f Opticalflow::GetOpticalFlow(const cv::Mat& curr_image, bool include_
 
 // странная функция, которая по сути должна отображать результаты
 // тут еще стоит переписать и покопаться
-std::string Opticalflow::GetAugmentedImage(std::string& image_base64){
+std::string OpticalFlowLkt::GetAugmentedImage(std::string& image_base64){
 
     // cv::Mat augmented_image = curr_image.clone();
 
