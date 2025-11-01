@@ -24,8 +24,6 @@ public:
 	}
 	void Start();
 	void Stop();
-	void SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
-						float float_rate_y, float quality = 255, float ground_distance = -1);
 
 	int ReadMessage(mavlink_message_t &message);
 	int WriteMessage(const mavlink_message_t &message);
@@ -48,8 +46,6 @@ private:
 
 	int  ReadPort(uint8_t &cp);
 	int  WritePort(char *buf, unsigned len);
-
-	uint64_t GetTimeUsec();
 
 };
 

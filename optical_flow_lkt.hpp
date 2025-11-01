@@ -10,7 +10,7 @@ public:
 	cv::Point2f GetOpticalFlow(const cv::Mat& curr_image, bool include_augmented_image = false, bool rev_flow = false);
 
 protected:
-	std::string GetAugmentedImage (std::string& image_base64);
+	// std::string GetAugmentedImage (std::string& image_base64);
 
 	cv::Mat prev_image;
 	double crop_factor = 0.6;

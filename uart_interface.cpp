@@ -276,34 +276,6 @@ void UartInterface::Stop()
 
 }
 
-void UartInterface::SendOpticalFlow(float flow_x, float flow_y, float flow_rate_x, 
-								 float float_rate_y, float quality, float ground_distance)
-{
-    mavlink_message_t msg;
-    mavlink_optical_flow_t optical_flow;
-        
-    // Заполнение данных оптического потока
-    optical_flow.time_usec = GetTimeUsec();
-    optical_flow.sensor_id = 1;
-    optical_flow.flow_x = flow_x;      // пиксели/сек
-    optical_flow.flow_y = flow_y;      // пиксели/сек
-    optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
-    optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
-    optical_flow.quality = quality;    // 0-255 (качество, по умолчанию 255)
-    optical_flow.ground_distance = ground_distance; // метры (по умолчанию < 0, т.к. не знаем высоту)
-    optical_flow.flow_rate_x = 0;
-    optical_flow.flow_rate_y = 0;
-        
-    mavlink_msg_optical_flow_encode(1, 1, &msg, &optical_flow);
-    std::cout << "bytes written: " << WriteMessage(msg) << std::endl;
-}
-
-uint64_t UartInterface::GetTimeUsec() {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (uint64_t)ts.tv_sec * 1000000 + ts.tv_nsec / 1000;
-}
-
 int UartInterface::WriteMessage(const mavlink_message_t &message)
 {
 	char buf[300];

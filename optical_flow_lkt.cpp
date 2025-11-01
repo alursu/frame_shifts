@@ -8,8 +8,6 @@ cv::Point2f OpticalFlowLkt::GetOpticalFlow(const cv::Mat& curr_image, bool inclu
     }   
 
     cv::Mat curr_image_grey = curr_image.clone();
-    // Потом, возмжно, не понадобится, т.к. планирую вставить в единый пайплайн. Но пока хз...
-    // cv::cvtColor(curr_image, curr_image_grey, cv::COLOR_BGR2GRAY);
 
     // Оптимизация - используем только центральные 60% изображения для обработки
     // Мб использовать и для BRISK? Но с меньшим процентом. Мб переписать без этой кучи переменных
@@ -117,16 +115,16 @@ cv::Point2f OpticalFlowLkt::GetOpticalFlow(const cv::Mat& curr_image, bool inclu
     flow_x *= 2.0;
     flow_y *= 2.0;
 
-    std::string image_base64;
-    if (include_augmented_image)
-        GetAugmentedImage(image_base64);
+    // std::string image_base64;
+    // if (include_augmented_image)
+    //     GetAugmentedImage(image_base64);
     
     return cv::Point2f(flow_x,flow_y);
 }
 
 // странная функция, которая по сути должна отображать результаты
 // тут еще стоит переписать и покопаться
-std::string OpticalFlowLkt::GetAugmentedImage(std::string& image_base64){
+// std::string OpticalFlowLkt::GetAugmentedImage(std::string& image_base64){
 
     // cv::Mat augmented_image = curr_image.clone();
 
@@ -166,5 +164,5 @@ std::string OpticalFlowLkt::GetAugmentedImage(std::string& image_base64){
 
     // // Base64 encode
     // image_base64 = base64_encode(buffer.data(), buffer.size());
-    return "nothing yet";
-}
+//     return "nothing yet";
+// }

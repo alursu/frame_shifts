@@ -32,8 +32,6 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 
 	std::ofstream time_lk;
 	time_lk.open("time_lk.txt");
-	int uart_fd = open("/dev/ttyAMA0", O_RDWR | O_NOCTTY | O_SYNC);
-	std::cout << uart_fd << std::endl;
 
 	// FeatureInfo - структура для хранения ключевых точек и их дескрипторов 
 	FeatureInfo firstInfo, secondInfo;
@@ -55,7 +53,7 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	cv::Point2f out;
 	OpticalFlowLkt opticalflow;
 
-	// m_uartMAVlink.Start();
+	m_port = new UartInterface();
 
 	// Если захватили кадр - начинаем обработку
 	if (cap->grab())
@@ -211,4 +209,28 @@ float Pipeline::CalculateVerticalFov(float hfov_deg, int width, int height) {
         // logger.error(logging_prefix_str + " mathematical error calculating VFOV: " + std::string(e.what()));
         return 0;
     }
+}
+
+void Pipeline::QuitHandler(int sig)
+{
+
+	printf("\n");
+	printf("TERMINATING AT USER REQUEST\n");
+	printf("\n");
+
+	// autopilot interface
+	try {
+		autopilot_interface_quit->handle_quit(sig);
+	}
+	catch (int error){}
+
+	// port
+	try {
+		port_quit->Stop();
+	}
+	catch (int error){}
+
+	// end program here
+	exit(0);
+
 }

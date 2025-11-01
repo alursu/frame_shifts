@@ -13,6 +13,7 @@
 #include "frame_processor.hpp"
 #include "moves_estimator.hpp"
 #include "optical_flow_lkt.hpp"
+#include "autopilot_interface.hpp"
 #include "uart_interface.hpp"
 
 class Pipeline
@@ -25,7 +26,7 @@ protected:
 
 	FrameProcessor m_frameProcessor;
 	MovesEstimator m_estimator;
-	UartInterface m_uartMAVlink;
+	AutopilotInterface m_autopilot;
 
 	std::vector<ImageData> m_matchedData;
 	std::string m_outFile;
