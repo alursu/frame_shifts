@@ -87,6 +87,7 @@ public:
 	Mavlink_Messages current_messages;
 
 	void read_messages();
+	void write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float float_rate_y);
 
 	void start();
 	void stop();
@@ -112,7 +113,6 @@ private:
 	} current_optical_flow;
 
 	void read_thread();
-	void write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float float_rate_y);
 
 };
 

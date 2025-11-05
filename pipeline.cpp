@@ -54,6 +54,14 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	OpticalFlowLkt opticalflow;
 
 	m_port = new UartInterface();
+	AutopilotInterface m_autopilot(m_port);
+
+	m_port_quit = m_port;
+	m_autopilot_interface_quit = &m_autopilot;
+	signal(SIGINT,QuitHandler);
+
+	m_port->Start();
+	m_autopilot.start();
 
 	// Если захватили кадр - начинаем обработку
 	if (cap->grab())
@@ -138,6 +146,8 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 		float flow_rate_x = out.x / (pixels_per_radian_h * (start - previous_img_capture_time));
 		float flow_rate_y = out.y / (pixels_per_radian_v * (start - previous_img_capture_time));
 
+		m_autopilot.write_optical_flow(out.x, out.y, flow_rate_x, flow_rate_y);
+
 		// m_uartMAVlink.SendOpticalFlow(out.x, out.y, flow_rate_x, flow_rate_y);
 
 		std::cout << "x shifts: " << out.x << "  " << "y shifts: " << out.y << std::endl;
@@ -151,11 +161,17 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 
 	time_lk <<"Общее время обработки: " << sum_lk << ", Среднее время обработки: " << (float)(sum_lk/frames) << ", Кол-во кадров: " << frames << std::endl;
 	// Закрываем файлы и источник видео
+	m_port->Stop();
+	m_autopilot.stop();
+
 	cap->release();
+
 	shifts.close();
 	shifts_lk.close();
 	time.close();
 	time_lk.close();
+
+	delete m_port;
 
 	return 0;
 }
@@ -211,7 +227,7 @@ float Pipeline::CalculateVerticalFov(float hfov_deg, int width, int height) {
     }
 }
 
-void Pipeline::QuitHandler(int sig)
+void QuitHandler(int sig)
 {
 
 	printf("\n");
@@ -220,13 +236,13 @@ void Pipeline::QuitHandler(int sig)
 
 	// autopilot interface
 	try {
-		autopilot_interface_quit->handle_quit(sig);
+		m_autopilot_interface_quit->handle_quit(sig);
 	}
 	catch (int error){}
 
 	// port
 	try {
-		port_quit->Stop();
+		m_port_quit->Stop();
 	}
 	catch (int error){}
 

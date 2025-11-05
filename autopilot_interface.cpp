@@ -172,7 +172,7 @@ start()
 	// wait for it to be started
 	while ( !writing_status )
 		usleep(100000); // 10Hz
-	// now we're streaming setpoint commands
+	// now we're streaming optical flow commands
 	printf("\n");
 
 	// Done!
