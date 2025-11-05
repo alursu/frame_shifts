@@ -73,7 +73,7 @@ class AutopilotInterface
 public:
 
 	AutopilotInterface();
-	explicit AutopilotInterface(UartInterface *port_);
+	explicit AutopilotInterface(Serial_Port *port_);
 	~AutopilotInterface();
 
 	char reading_status;
@@ -100,7 +100,7 @@ public:
 
 private:
 
-	UartInterface *port;
+	Serial_Port *port;
 
 	bool time_to_exit;
 

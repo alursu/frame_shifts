@@ -16,7 +16,7 @@ AutopilotInterface::AutopilotInterface()
 
 
 AutopilotInterface::
-AutopilotInterface(UartInterface *port_)
+AutopilotInterface(Serial_Port *port_)
 {
 	// initialize attributes
 
@@ -56,7 +56,7 @@ read_messages()
 	while ( !received_all and !time_to_exit )
 	{
 		mavlink_message_t message;
-		success = port->ReadMessage(message);
+		success = port->read_message(message);
 
 		// ----------------------------------------------------------------------
 		//   HANDLE MESSAGE
@@ -126,7 +126,7 @@ start()
 	//   CHECK PORT
 	// --------------------------------------------------------------------------
 
-	if ( !port->IsRunning() ) // PORT_OPEN
+	if ( !port->is_running() ) // PORT_OPEN
 	{
 		fprintf(stderr,"ERROR: port not open\n");
 		throw 1;
@@ -305,7 +305,7 @@ write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float float_ra
 	mavlink_msg_optical_flow_encode(system_id, companion_id, &message, &optical_flow);
 
 	// do the write
-	int len = port->WriteMessage(message);
+	int len = port->write_message(message);
 
 	// check the write
 	if ( len <= 0 )

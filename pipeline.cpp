@@ -14,7 +14,7 @@ using namespace cv;
 #define M_PI 3.1415926535897932384626433832795
 
 AutopilotInterface *autopilot_interface_quit;
-UartInterface *port_quit;
+Serial_Port *port_quit;
 
 // Cоздаем обработчик m_frameProcessor для детекции, сравнения особых точек
 Pipeline::Pipeline(int threshold, int octaves)
@@ -56,14 +56,14 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	cv::Point2f out;
 	OpticalFlowLkt opticalflow;
 
-	UartInterface *m_port = new UartInterface();
+	Serial_Port *m_port = new Serial_Port("/dev/ttyAMA0", 115200);
 	AutopilotInterface m_autopilot(m_port);
 
 	port_quit = m_port;
 	autopilot_interface_quit = &m_autopilot;
 	signal(SIGINT,QuitHandler);
 
-	m_port->Start();
+	m_port->start();
 	m_autopilot.start();
 
 	// Если захватили кадр - начинаем обработку
@@ -164,7 +164,7 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 
 	time_lk <<"Общее время обработки: " << sum_lk << ", Среднее время обработки: " << (float)(sum_lk/frames) << ", Кол-во кадров: " << frames << std::endl;
 	// Закрываем файлы и источник видео
-	m_port->Stop();
+	m_port->stop();
 	m_autopilot.stop();
 
 	cap->release();
@@ -245,7 +245,7 @@ void QuitHandler(int sig)
 
 	// port
 	try {
-		port_quit->Stop();
+		port_quit->stop();
 	}
 	catch (int error){}
 

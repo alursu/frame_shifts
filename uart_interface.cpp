@@ -1,26 +1,100 @@
+/****************************************************************************
+ *
+ *   Copyright (c) 2014 MAVlink Development Team. All rights reserved.
+ *   Author: Trent Lukaczyk, <aerialhedgehog@gmail.com>
+ *           Jaycee Lock,    <jaycee.lock@gmail.com>
+ *           Lorenz Meier,   <lm@inf.ethz.ch>
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ *
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in
+ *    the documentation and/or other materials provided with the
+ *    distribution.
+ * 3. Neither the name PX4 nor the names of its contributors may be
+ *    used to endorse or promote products derived from this software
+ *    without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+ * LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+ * ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ * POSSIBILITY OF SUCH DAMAGE.
+ *
+ ****************************************************************************/
+
+/**
+ * @file serial_port.cpp
+ *
+ * @brief Serial interface functions
+ *
+ * Functions for opening, closing, reading and writing via serial ports
+ *
+ * @author Trent Lukaczyk, <aerialhedgehog@gmail.com>
+ * @author Jaycee Lock,    <jaycee.lock@gmail.com>
+ * @author Lorenz Meier,   <lm@inf.ethz.ch>
+ *
+ */
+
+
+// ------------------------------------------------------------------------------
+//   Includes
+// ------------------------------------------------------------------------------
 
 #include "uart_interface.hpp"
 
-UartInterface::UartInterface()
-{
-	InitializeDefaults();
-}
 
-UartInterface::UartInterface(const char *uart_name_, int baudrate_)
+// ----------------------------------------------------------------------------------
+//   Serial Port Manager Class
+// ----------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------
+//   Con/De structors
+// ------------------------------------------------------------------------------
+Serial_Port::
+Serial_Port(const char *uart_name_ , int baudrate_)
 {
-	InitializeDefaults();
+	initialize_defaults();
 	uart_name = uart_name_;
 	baudrate  = baudrate_;
 }
 
-UartInterface::~UartInterface()
+Serial_Port::
+Serial_Port()
 {
-	pthread_mutex_destroy(&lock);
-	Stop();
+	initialize_defaults();
 }
 
-void UartInterface::InitializeDefaults()
+Serial_Port::
+~Serial_Port()
 {
+	// destroy mutex
+	pthread_mutex_destroy(&lock);
+}
+
+void
+Serial_Port::
+initialize_defaults()
+{
+	// Initialize attributes
+	debug  = false;
+	fd     = -1;
+	is_open = false;
+
+	uart_name = (char*)"/dev/ttyUSB0";
+	baudrate  = 57600;
+
 	// Start mutex
 	int result = pthread_mutex_init(&lock, NULL);
 	if ( result != 0 )
@@ -30,32 +104,153 @@ void UartInterface::InitializeDefaults()
 	}
 }
 
-void UartInterface::Start()
+
+// ------------------------------------------------------------------------------
+//   Read from Serial
+// ------------------------------------------------------------------------------
+int
+Serial_Port::
+read_message(mavlink_message_t &message)
 {
+	uint8_t          cp;
+	mavlink_status_t status;
+	uint8_t          msgReceived = false;
+
+	// --------------------------------------------------------------------------
+	//   READ FROM PORT
+	// --------------------------------------------------------------------------
+
+	// this function locks the port during read
+	int result = _read_port(cp);
+
+
+	// --------------------------------------------------------------------------
+	//   PARSE MESSAGE
+	// --------------------------------------------------------------------------
+	if (result > 0)
+	{
+		// the parsing
+		msgReceived = mavlink_parse_char(MAVLINK_COMM_1, cp, &message, &status);
+
+		// check for dropped packets
+		if ( (lastStatus.packet_rx_drop_count != status.packet_rx_drop_count) && debug )
+		{
+			printf("ERROR: DROPPED %d PACKETS\n", status.packet_rx_drop_count);
+			unsigned char v=cp;
+			fprintf(stderr,"%02x ", v);
+		}
+		lastStatus = status;
+	}
+
+	// Couldn't read from port
+	else
+	{
+		fprintf(stderr, "ERROR: Could not read from fd %d\n", fd);
+	}
+
+	// --------------------------------------------------------------------------
+	//   DEBUGGING REPORTS
+	// --------------------------------------------------------------------------
+	if(msgReceived && debug)
+	{
+		// Report info
+		printf("Received message from serial with ID #%d (sys:%d|comp:%d):\n", message.msgid, message.sysid, message.compid);
+
+		fprintf(stderr,"Received serial data: ");
+		unsigned int i;
+		uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
+
+		// check message is write length
+		unsigned int messageLength = mavlink_msg_to_send_buffer(buffer, &message);
+
+		// message length error
+		if (messageLength > MAVLINK_MAX_PACKET_LEN)
+		{
+			fprintf(stderr, "\nFATAL ERROR: MESSAGE LENGTH IS LARGER THAN BUFFER SIZE\n");
+		}
+
+		// print out the buffer
+		else
+		{
+			for (i=0; i<messageLength; i++)
+			{
+				unsigned char v=buffer[i];
+				fprintf(stderr,"%02x ", v);
+			}
+			fprintf(stderr,"\n");
+		}
+	}
+
+	// Done!
+	return msgReceived;
+}
+
+// ------------------------------------------------------------------------------
+//   Write to Serial
+// ------------------------------------------------------------------------------
+int
+Serial_Port::
+write_message(const mavlink_message_t &message)
+{
+	char buf[300];
+
+	// Translate message to buffer
+	unsigned len = mavlink_msg_to_send_buffer((uint8_t*)buf, &message);
+
+	// Write buffer to serial port, locks port while writing
+	int bytesWritten = _write_port(buf,len);
+
+	return bytesWritten;
+}
+
+
+// ------------------------------------------------------------------------------
+//   Open Serial Port
+// ------------------------------------------------------------------------------
+/**
+ * throws EXIT_FAILURE if could not open the port
+ */
+void
+Serial_Port::
+start()
+{
+
+	// --------------------------------------------------------------------------
+	//   OPEN PORT
+	// --------------------------------------------------------------------------
 	printf("OPEN PORT\n");
 
-	uart_fd = OpenPort(uart_name);
+	fd = _open_port(uart_name);
 
 	// Check success
-	if (uart_fd == -1)
+	if (fd == -1)
 	{
 		printf("failure, could not open port.\n");
 		throw EXIT_FAILURE;
 	}
 
-	bool success = SetupPort(baudrate, 8, 1, false, false);
+	// --------------------------------------------------------------------------
+	//   SETUP PORT
+	// --------------------------------------------------------------------------
+	bool success = _setup_port(baudrate, 8, 1, false, false);
 
+	// --------------------------------------------------------------------------
+	//   CHECK STATUS
+	// --------------------------------------------------------------------------
 	if (!success)
 	{
 		printf("failure, could not configure port.\n");
 		throw EXIT_FAILURE;
 	}
-	if (uart_fd <= 0)
+	if (fd <= 0)
 	{
 		printf("Connection attempt to port %s with %d baud, 8N1 failed, exiting.\n", uart_name, baudrate);
 		throw EXIT_FAILURE;
 	}
 
+	// --------------------------------------------------------------------------
+	//   CONNECTED!
+	// --------------------------------------------------------------------------
 	printf("Connected to %s with %d baud, 8 data bits, no parity, 1 stop bit (8N1)\n", uart_name, baudrate);
 	lastStatus.packet_rx_drop_count = 0;
 
@@ -64,45 +259,82 @@ void UartInterface::Start()
 	printf("\n");
 
 	return;
+
 }
 
-int UartInterface::OpenPort(const char *port)
+
+// ------------------------------------------------------------------------------
+//   Close Serial Port
+// ------------------------------------------------------------------------------
+void
+Serial_Port::
+stop()
+{
+	printf("CLOSE PORT\n");
+
+	int result = close(fd);
+
+	if ( result )
+	{
+		fprintf(stderr,"WARNING: Error on port close (%i)\n", result );
+	}
+
+	is_open = false;
+
+	printf("\n");
+
+}
+
+// ------------------------------------------------------------------------------
+//   Helper Function - Open Serial Port File Descriptor
+// ------------------------------------------------------------------------------
+// Where the actual port opening happens, returns file descriptor 'fd'
+int
+Serial_Port::
+_open_port(const char* port)
 {
 	// Open serial port
 	// O_RDWR - Read and write
 	// O_NOCTTY - Ignore special chars like CTRL-C
-	uart_fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY);
+	fd = open(port, O_RDWR | O_NOCTTY | O_NDELAY);
 
 	// Check for Errors
-	if (uart_fd == -1)
+	if (fd == -1)
 	{
 		/* Could not open the port. */
-		return -1;
+		return(-1);
 	}
 
 	// Finalize
 	else
 	{
-		fcntl(uart_fd, F_SETFL, 0);
+		fcntl(fd, F_SETFL, 0);
 	}
 
-	return uart_fd;
+	// Done!
+	return fd;
 }
 
-bool UartInterface::SetupPort(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
+// ------------------------------------------------------------------------------
+//   Helper Function - Setup Serial Port
+// ------------------------------------------------------------------------------
+// Sets configuration, flags, and baud rate
+bool
+Serial_Port::
+_setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
 {
 	// Check file descriptor
-	if(!isatty(uart_fd))
+	if(!isatty(fd))
 	{
-		fprintf(stderr, "\nERROR: file descriptor %d is NOT a serial port\n", uart_fd);
+		fprintf(stderr, "\nERROR: file descriptor %d is NOT a serial port\n", fd);
 		return false;
 	}
 
 	// Read file descritor configuration
 	struct termios  config;
-	if(tcgetattr(uart_fd, &config) < 0)
+	if(tcgetattr(fd, &config) < 0)
 	{
-		std::cerr << "ERROR: could not read configuration of uart_fd" << uart_fd << std::endl;
+		fprintf(stderr, "\nERROR: could not read configuration of fd %d\n", fd);
 		return false;
 	}
 
@@ -151,20 +383,103 @@ bool UartInterface::SetupPort(int baud, int data_bits, int stop_bits, bool parit
 	////tcgetattr(fd, &options);
 
 	// Apply baudrate
+	// switch (baud)
+	// {
+	// 	case 1200:
+	// 		if (cfsetispeed(&config, B1200) < 0 || cfsetospeed(&config, B1200) < 0)
+	// 		{
+	// 			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+	// 			return false;
+	// 		}
+	// 		break;
+	// 	case 1800:
+	// 		cfsetispeed(&config, B1800);
+	// 		cfsetospeed(&config, B1800);
+	// 		break;
+	// 	case 9600:
+	// 		cfsetispeed(&config, B9600);
+	// 		cfsetospeed(&config, B9600);
+	// 		break;
+	// 	case 19200:
+	// 		cfsetispeed(&config, B19200);
+	// 		cfsetospeed(&config, B19200);
+	// 		break;
+	// 	case 38400:
+	// 		if (cfsetispeed(&config, B38400) < 0 || cfsetospeed(&config, B38400) < 0)
+	// 		{
+	// 			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+	// 			return false;
+	// 		}
+	// 		break;
+	// 	case 57600:
+	// 		if (cfsetispeed(&config, B57600) < 0 || cfsetospeed(&config, B57600) < 0)
+	// 		{
+	// 			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+	// 			return false;
+	// 		}
+	// 		break;
+	// 	case 115200:
+	// 		if (cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)
+	// 		{
+	// 			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+	// 			return false;
+	// 		}
+	// 		break;
+
+	// 	// These two non-standard (by the 70'ties ) rates are fully supported on
+	// 	// current Debian and Mac OS versions (tested since 2010).
+	// 	case 460800:
+	// 		if (cfsetispeed(&config, B460800) < 0 || cfsetospeed(&config, B460800) < 0)
+	// 		{
+	// 			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+	// 			return false;
+	// 		}
+	// 		break;
+	// 	case 921600:
+	// 		if (cfsetispeed(&config, B921600) < 0 || cfsetospeed(&config, B921600) < 0)
+	// 		{
+	// 			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+	// 			return false;
+	// 		}
+	// 		break;
+	// 	default:
+	// 		fprintf(stderr, "ERROR: Desired baud rate %d could not be set, aborting.\n", baud);
+	// 		return false;
+
+	// 		break;
+	// }
+
 	if (cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)
+		{
+			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+			return false;
+		}
+
+	// Finally, apply the configuration
+	if(tcsetattr(fd, TCSAFLUSH, &config) < 0)
 	{
-		fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+		fprintf(stderr, "\nERROR: could not set configuration of fd %d\n", fd);
 		return false;
 	}
+
+	// Done!
 	return true;
 }
 
-int UartInterface::ReadPort(uint8_t &cp)
+
+
+// ------------------------------------------------------------------------------
+//   Read Port with Lock
+// ------------------------------------------------------------------------------
+int
+Serial_Port::
+_read_port(uint8_t &cp)
 {
+
 	// Lock
 	pthread_mutex_lock(&lock);
 
-	int result = read(uart_fd, &cp, 1);
+	int result = read(fd, &cp, 1);
 
 	// Unlock
 	pthread_mutex_unlock(&lock);
@@ -172,119 +487,27 @@ int UartInterface::ReadPort(uint8_t &cp)
 	return result;
 }
 
-int UartInterface::ReadMessage(mavlink_message_t &message)
+
+// ------------------------------------------------------------------------------
+//   Write Port with Lock
+// ------------------------------------------------------------------------------
+int
+Serial_Port::
+_write_port(char *buf, unsigned len)
 {
-	uint8_t          cp;
-	mavlink_status_t status;
-	uint8_t          msgReceived = false;
 
-	// this function locks the port during read
-	int result = ReadPort(cp);
-
-
-	// --------------------------------------------------------------------------
-	//   PARSE MESSAGE
-	// --------------------------------------------------------------------------
-	if (result > 0)
-	{
-		// the parsing
-		msgReceived = mavlink_parse_char(MAVLINK_COMM_1, cp, &message, &status);
-
-		// check for dropped packets
-		if ( (lastStatus.packet_rx_drop_count != status.packet_rx_drop_count) && debug )
-		{
-			printf("ERROR: DROPPED %d PACKETS\n", status.packet_rx_drop_count);
-			unsigned char v=cp;
-			fprintf(stderr,"%02x ", v);
-		}
-		lastStatus = status;
-	}
-	else
-	{
-		fprintf(stderr, "ERROR: Could not read from fd %d\n", uart_fd);
-	}
-
-	// --------------------------------------------------------------------------
-	//   DEBUGGING REPORTS
-	// --------------------------------------------------------------------------
-	if(msgReceived && debug)
-	{
-		// Report info
-		printf("Received message from serial with ID #%d (sys:%d|comp:%d):\n", message.msgid, message.sysid, message.compid);
-
-		fprintf(stderr,"Received serial data: ");
-		unsigned int i;
-		uint8_t buffer[MAVLINK_MAX_PACKET_LEN];
-
-		// check message is write length
-		unsigned int messageLength = mavlink_msg_to_send_buffer(buffer, &message);
-
-		// message length error
-		if (messageLength > MAVLINK_MAX_PACKET_LEN)
-		{
-			fprintf(stderr, "\nFATAL ERROR: MESSAGE LENGTH IS LARGER THAN BUFFER SIZE\n");
-		}
-
-		// print out the buffer
-		else
-		{
-			for (i=0; i<messageLength; i++)
-			{
-				unsigned char v=buffer[i];
-				fprintf(stderr,"%02x ", v);
-			}
-			fprintf(stderr,"\n");
-		}
-	}
-
-	// Done!
-	return msgReceived;
-}
-
-int UartInterface::WritePort(char *buf, unsigned len)
-{
 	// Lock
 	pthread_mutex_lock(&lock);
 
 	// Write packet via serial link
-	const int bytesWritten = static_cast<int>(write(uart_fd, buf, len));
+	const int bytesWritten = static_cast<int>(write(fd, buf, len));
 
 	// Wait until all data has been written
-	tcdrain(uart_fd);
+	tcdrain(fd);
 
 	// Unlock
 	pthread_mutex_unlock(&lock);
 
-
-	return bytesWritten;
-}
-
-void UartInterface::Stop()
-{
-	printf("CLOSE PORT\n");
-
-	int result = close(uart_fd);
-
-	if ( result )
-	{
-		fprintf(stderr,"WARNING: Error on port close (%i)\n", result );
-	}
-
-	is_open = false;
-
-	printf("\n");
-
-}
-
-int UartInterface::WriteMessage(const mavlink_message_t &message)
-{
-	char buf[300];
-
-	// Translate message to buffer
-	unsigned len = mavlink_msg_to_send_buffer((uint8_t*)buf, &message);
-
-	// Write buffer to serial port, locks port while writing
-	int bytesWritten = WritePort(buf,len);
 
 	return bytesWritten;
 }
