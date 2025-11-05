@@ -13,6 +13,9 @@ using namespace cv;
 
 #define M_PI 3.1415926535897932384626433832795
 
+AutopilotInterface *autopilot_interface_quit;
+UartInterface *port_quit;
+
 // Cоздаем обработчик m_frameProcessor для детекции, сравнения особых точек
 Pipeline::Pipeline(int threshold, int octaves)
 	: m_frameProcessor("BRISK", threshold, octaves)
@@ -53,11 +56,11 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	cv::Point2f out;
 	OpticalFlowLkt opticalflow;
 
-	m_port = new UartInterface();
+	UartInterface *m_port = new UartInterface();
 	AutopilotInterface m_autopilot(m_port);
 
-	m_port_quit = m_port;
-	m_autopilot_interface_quit = &m_autopilot;
+	port_quit = m_port;
+	autopilot_interface_quit = &m_autopilot;
 	signal(SIGINT,QuitHandler);
 
 	m_port->Start();
@@ -236,13 +239,13 @@ void QuitHandler(int sig)
 
 	// autopilot interface
 	try {
-		m_autopilot_interface_quit->handle_quit(sig);
+		autopilot_interface_quit->handle_quit(sig);
 	}
 	catch (int error){}
 
 	// port
 	try {
-		m_port_quit->Stop();
+		port_quit->Stop();
 	}
 	catch (int error){}
 

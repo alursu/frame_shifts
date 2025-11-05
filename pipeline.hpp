@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PIPELINE_H_
+#define PIPELINE_H_
 
 #include <opencv2/opencv.hpp>
 
@@ -27,7 +28,7 @@ protected:
 	FrameProcessor m_frameProcessor;
 	MovesEstimator m_estimator;
 	// AutopilotInterface m_autopilot;
-	UartInterface *m_port;
+	// UartInterface *m_port;
 
 	std::vector<ImageData> m_matchedData;
 	std::string m_outFile;
@@ -39,7 +40,6 @@ protected:
 	float CalculateVerticalFov(float hfov_deg, int width, int height);
 };
 
-	// quit handler
-	AutopilotInterface *m_autopilot_interface_quit;
-	UartInterface *m_port_quit;
-	void QuitHandler( int sig );
+void QuitHandler( int sig );
+
+#endif
