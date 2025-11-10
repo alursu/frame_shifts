@@ -477,12 +477,12 @@ _read_port(uint8_t &cp)
 {
 
 	// Lock
-	pthread_mutex_lock(&lock);
+	// pthread_mutex_lock(&lock);
 
 	int result = read(fd, &cp, 1);
 
 	// Unlock
-	pthread_mutex_unlock(&lock);
+	// pthread_mutex_unlock(&lock);
 
 	return result;
 }
@@ -497,7 +497,9 @@ _write_port(char *buf, unsigned len)
 {
 
 	// Lock
-	pthread_mutex_lock(&lock);
+	// pthread_mutex_lock(&lock);
+
+	tcflush(fd, TCIFLUSH); 
 
 	// Write packet via serial link
 	const int bytesWritten = static_cast<int>(write(fd, buf, len));
@@ -506,7 +508,7 @@ _write_port(char *buf, unsigned len)
 	tcdrain(fd);
 
 	// Unlock
-	pthread_mutex_unlock(&lock);
+	// pthread_mutex_unlock(&lock);
 
 
 	return bytesWritten;

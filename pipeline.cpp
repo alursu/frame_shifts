@@ -56,7 +56,7 @@ int Pipeline::ProcessVideo(std::string videoFileName, std::string outFileName)
 	cv::Point2f out;
 	OpticalFlowLkt opticalflow;
 
-	Serial_Port *m_port = new Serial_Port("/dev/ttyAMA0", 115200);
+	Serial_Port *m_port = new Serial_Port("/dev/ttyACM0", 115200);
 	AutopilotInterface m_autopilot(m_port);
 
 	port_quit = m_port;

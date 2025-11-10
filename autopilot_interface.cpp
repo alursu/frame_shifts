@@ -1,4 +1,5 @@
 #include "autopilot_interface.hpp"
+#include <iostream>
 
 
 uint64_t
@@ -53,7 +54,7 @@ read_messages()
 	Time_Stamps this_timestamps;
 
 	// Blocking wait for new data
-	while ( !received_all and !time_to_exit )
+	while ( !received_all and !time_to_exit and !received_first_message)
 	{
 		mavlink_message_t message;
 		success = port->read_message(message);
@@ -63,7 +64,6 @@ read_messages()
 		// ----------------------------------------------------------------------
 		if( success )
 		{
-
 			// Store message sysid and compid.
 			// Note this doesn't handle multiple message sources.
 			current_messages.sysid  = message.sysid;
@@ -99,7 +99,7 @@ read_messages()
 
 
 			} // end: switch msgid
-
+			received_first_message = true;
 		} // end: if read message
 
 		// Check for receipt of all items
@@ -134,10 +134,11 @@ start()
 
 
 	printf("START READ THREAD \n");
-	result = pthread_create( &read_tid, NULL, &start_autopilot_interface_read_thread, this );
-	if ( result ) throw result;
-	// now we're reading messages
-	printf("\n");
+	// result = pthread_create( &read_tid, NULL, &start_autopilot_interface_read_thread, this );
+	// if ( result ) throw result;
+	// // now we're reading messages
+	// printf("\n");
+	read_messages();
 
 
 	printf("CHECK FOR MESSAGES\n");
@@ -165,15 +166,19 @@ start()
 		printf("\n");
 	}
 
+	// time_to_exit = true;
+	// pthread_join(read_tid ,NULL);
+
 
 	printf("START WRITE THREAD \n");
-	result = pthread_create( &write_tid, NULL, &start_autopilot_interface_write_thread, this );
-	if ( result ) throw result;
-	// wait for it to be started
-	while ( !writing_status )
-		usleep(100000); // 10Hz
-	// now we're streaming optical flow commands
-	printf("\n");
+	// result = pthread_create( &write_tid, NULL, &start_autopilot_interface_write_thread, this );
+	// if ( result ) throw result;
+	// // wait for it to be started
+	// while ( !writing_status )
+	// 	usleep(100000); // 10Hz
+	// // now we're streaming optical flow commands
+	// printf("\n");
+	write_optical_flow(0,0,0,0);
 
 	// Done!
 	return;
@@ -275,7 +280,7 @@ read_thread()
 
 void
 AutopilotInterface::
-write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float float_rate_y)
+write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float flow_rate_y)
 {
 	
 	writing_status = true;
@@ -284,14 +289,14 @@ write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float float_ra
         
     // Заполнение данных оптического потока
 	optical_flow.sensor_id = system_id;
-    optical_flow.flow_x = 0;      // пиксели/сек
-    optical_flow.flow_y = 0;      // пиксели/сек
+    optical_flow.flow_x = flow_x;      // пиксели/сек
+    optical_flow.flow_y = flow_y;      // пиксели/сек
     optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
     optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
     optical_flow.quality = 255;    // 0-255 (качество, по умолчанию 255)
     optical_flow.ground_distance = -1; // метры (по умолчанию < 0, т.к. не знаем высоту)
-    optical_flow.flow_rate_x = 0;
-    optical_flow.flow_rate_y = 0;
+    optical_flow.flow_rate_x = flow_rate_x;
+    optical_flow.flow_rate_y = flow_rate_y;
 	optical_flow.time_usec = (uint32_t) (get_time_usec());
 
 	// set optical flow target
