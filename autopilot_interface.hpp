@@ -2,20 +2,12 @@
 #define AUTOPILOT_INTERFACE_H_
 
 #include "uart_interface.hpp"
-#include <signal.h>
-#include <time.h>
 #include <sys/time.h>
-#include <pthread.h> // This uses POSIX Threads
-#include <unistd.h>  // UNIX standard function definitions
-#include <mutex>
 #include <common/mavlink.h>
+#include <memory>
 
 // helper functions
 uint64_t get_time_usec();
-
-void* start_autopilot_interface_read_thread(void *args);
-void* start_autopilot_interface_write_thread(void *args);
-
 
 // ------------------------------------------------------------------------------
 //   Data Structures
@@ -28,14 +20,14 @@ struct Time_Stamps
 		reset_timestamps();
 	}
 
-	uint64_t heartbeat;
-	uint64_t sys_status;
+	uint64_t heartbeat_;
+	uint64_t sys_status_;
 
 	void
 	reset_timestamps()
 	{
-		heartbeat = 0;
-		sys_status = 0;
+		heartbeat_ = 0;
+		sys_status_ = 0;
 	}
 
 };
@@ -45,17 +37,17 @@ struct Time_Stamps
 
 struct Mavlink_Messages {
 
-	int sysid;
-	int compid;
+	int sysid_;
+	int compid_;
 
-	mavlink_heartbeat_t heartbeat;
-	mavlink_sys_status_t sys_status;
-	Time_Stamps time_stamps;
+	mavlink_heartbeat_t heartbeat_;
+	mavlink_sys_status_t sys_status_;
+	Time_Stamps time_stamps_;
 
 	void
 	reset_timestamps()
 	{
-		time_stamps.reset_timestamps();
+		time_stamps_.reset_timestamps();
 	}
 
 };
@@ -64,27 +56,21 @@ struct Mavlink_Messages {
 // ----------------------------------------------------------------------------------
 //   Autopilot Interface Class
 // ----------------------------------------------------------------------------------
-/*
- * This starts two threads for read and write over MAVlink. 
- */
+
 class AutopilotInterface
 {
 
 public:
 
 	AutopilotInterface();
-	explicit AutopilotInterface(Serial_Port *port_);
+	explicit AutopilotInterface(std::shared_ptr<UartInterface> port_);
 	~AutopilotInterface();
 
-	char reading_status;
-	char writing_status;
-	char control_status;
+    int system_id_;
+	int autopilot_id_;
+	int companion_id_;
 
-    int system_id;
-	int autopilot_id;
-	int companion_id;
-
-	Mavlink_Messages current_messages;
+	Mavlink_Messages current_messages_;
 
 	void read_messages();
 	void write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float flow_rate_y);
@@ -92,28 +78,14 @@ public:
 	void start();
 	void stop();
 
-	void start_read_thread();
-	void start_write_thread(void);
-
 	void handle_quit( int sig );
-
 
 private:
 
-	Serial_Port *port;
+	std::shared_ptr<UartInterface> port_;
 
-	bool time_to_exit;
-
-	pthread_t read_tid;
-	pthread_t write_tid;
-
-		struct {
-		std::mutex mutex;
-		mavlink_optical_flow_t data;
-	} current_optical_flow;
-
-	void read_thread();
-	bool received_first_message = false;
+	bool time_to_exit_;
+	bool received_first_message_ = false;
 
 };
 

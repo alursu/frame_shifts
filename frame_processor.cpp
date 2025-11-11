@@ -4,61 +4,61 @@ using namespace std;
 using namespace cv;
 
 FrameProcessor::FrameProcessor(std::string detectorName, int threshold, int planes)
-	: m_threshold(threshold)
+	: threshold_(threshold)
 {
 	// Cоздаем детектор, дескриптор и матчер. Threshold - пороговое значение
 	// для определения точки как ключевой, planes - кол-во октав, т.е. кол-во
 	// уровней в пирамиде - пирамида состоит из изображения и его копий
 	// в масштабе 0.5 для каждого уровня (т.е. первый уровень - 0.5, второй - 0.25 и т.д.). 
 	// Обеспечивает инвариантность алгоритма к масштабированию 
-    m_pDetector = BRISK::create(threshold, planes);
-    m_pDescriptor = BRISK::create(threshold, planes);
+    detector_ = BRISK::create(threshold, planes);
+    descriptor_ = BRISK::create(threshold, planes);
 
 	// Т.к. BRISK бинарный (как и ORB), то используется NORM_HAMMING
 	// SIFT и SURF используют NORM_L2
-    m_pMatcher = BFMatcher::create(NORM_HAMMING, false);
+    matcher_ = BFMatcher::create(NORM_HAMMING, false);
 }
 
-FeatureInfo FrameProcessor::GetKeypointData(cv::Mat const &image)
+FeatureInfo FrameProcessor::get_keypoint_data(cv::Mat const &image)
 {
 	FeatureInfo frameInfo;
 
 	// Определяем ключевые точки
-	m_pDetector->detect(image, frameInfo.keypoints);
+	detector_->detect(image, frameInfo.keypoints_);
 
 	// Вычисляем дескрипторы для особых точек
-	m_pDescriptor->compute(image, frameInfo.keypoints, frameInfo.descriptors);
+	descriptor_->compute(image, frameInfo.keypoints_, frameInfo.descriptors_);
     return frameInfo;
 }
 
-ImageData FrameProcessor::MatchImages(cv::InputArray& im1, FeatureInfo & first, cv::InputArray& im2,
+ImageData FrameProcessor::match_images(cv::InputArray& im1, FeatureInfo & first, cv::InputArray& im2,
                                   FeatureInfo & second, double relPower)
 {
-	second = GetKeypointData(im2.getMat());
-	ImageData ret = MatchDescriptors(first, second, relPower);
+	second = get_keypoint_data(im2.getMat());
+	ImageData ret = match_descriptors(first, second, relPower);
 
 	// Пока кол-во отфильтрованных матчей не будет соответствовать 
 	// указанному диапазону 90-360, меняем пороговое значение и 
 	// повторно определяем ключевые точки и дескрипторы для нового значения
-	while (!CheckThreshold(ret))
+	while (!check_threshold(ret))
 	{
-		cout << "New threshold " << m_threshold << endl;
-		first = GetKeypointData(im1.getMat());
-		second = GetKeypointData(im2.getMat());
-		ret = MatchDescriptors(first, second, relPower);
+		cout << "New threshold " << threshold << endl;
+		first = get_keypoint_data(im1.getMat());
+		second = get_keypoint_data(im2.getMat());
+		ret = match_descriptors(first, second, relPower);
 	}
 	return ret;
 }
 
-int FrameProcessor::SetThreshold(int newThreshold)
+int FrameProcessor::set_threshold(int new_threshold)
 {
 	// Переопределяем пороговое значение
-	cv::Ptr<cv::BRISK> ptr = m_pDetector.dynamicCast<cv::BRISK>();
-	ptr->setThreshold(newThreshold);
+	cv::Ptr<cv::BRISK> ptr = detector_.dynamicCast<cv::BRISK>();
+	ptr->setThreshold(new_threshold);
 	return ptr->getThreshold();
 }
 
-ImageData FrameProcessor::MatchDescriptors(FeatureInfo const &first, FeatureInfo const &second, double relPower)
+ImageData FrameProcessor::match_descriptors(FeatureInfo const &first, FeatureInfo const &second, double relPower)
 { 
 	// определение матчей - сопоставление особых точек по их дескрипторам
 	// + фильтрация c помощью теста Лоу:
@@ -69,7 +69,7 @@ ImageData FrameProcessor::MatchDescriptors(FeatureInfo const &first, FeatureInfo
 	// а матч записывается в goodMatches, иначе сопоставление расценивается как случайное совпадение.
 	vector<cv::DMatch> goodMatches;
 	std::vector<std::vector<cv::DMatch>> knnMatches;
-	m_pMatcher->knnMatch(first.descriptors, second.descriptors, knnMatches,2);
+	matcher_->knnMatch(first.descriptors_, second.descriptors_, knnMatches,2);
 	for (auto match : knnMatches)
 	{
 		if (match[0].distance < relPower * match[1].distance)
@@ -78,31 +78,31 @@ ImageData FrameProcessor::MatchDescriptors(FeatureInfo const &first, FeatureInfo
 	ImageData retData;
 
 	// Сохраняем отфильтрованные матчи
-	retData.SetKeypoints(first.keypoints,second.keypoints);
-	retData.SetMatches(goodMatches);
+	retData.set_keypoints(first.keypoints_,second.keypoints_);
+	retData.set_matches(goodMatches);
 	return retData;
 }
 
-bool FrameProcessor::CheckThreshold(ImageData const & data)
+bool FrameProcessor::check_threshold(ImageData const & data)
 {
 	// Если матчей меньше 90 и пороговое значение больше 10, снижаем порог на величину, 
 	// зависящую от степени отличия нынешнего кол-ва матчей и "центрального" значения из 
 	// указанного диапазона матчей
-	auto totalMatches = data.Matches().size();
-	if (totalMatches < m_minimumFeaturesRequired && m_threshold>minimumThreshold)
+	auto totalMatches = data.matches().size();
+	if (totalMatches < minimum_features_required_ && threshold_>minimum_threshold_)
 	{
-		m_threshold-= static_cast<int>(ceil((1-totalMatches/(2.5*m_minimumFeaturesRequired))*20));
-		if (m_threshold < minimumThreshold)
-			m_threshold = minimumThreshold;
-		SetThreshold(m_threshold);
+		threshold_-= static_cast<int>(ceil((1-totalMatches/(2.5*minimum_features_required_))*20));
+		if (threshold_ < minimum_threshold_)
+			threshold_ = minimum_threshold_;
+		set_threshold(threshold_);
 		return false;
 	}
 
 	// Аналогично, проверяем верхнуюю границу - 360. 
-	if (totalMatches > 4 * m_minimumFeaturesRequired)
+	if (totalMatches > 4 * minimum_features_required_)
 	{
-		m_threshold+= static_cast<int>(ceil((1-(2.5*m_minimumFeaturesRequired)/totalMatches)*20));
-		SetThreshold(m_threshold);
+		threshold_+= static_cast<int>(ceil((1-(2.5*minimum_features_required_)/totalMatches)*20));
+		set_threshold(threshold_);
 		return false;
 	}
     return true;

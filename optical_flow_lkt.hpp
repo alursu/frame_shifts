@@ -7,25 +7,28 @@
 class OpticalFlowLkt
 {
 public:
-	cv::Point2f GetOpticalFlow(const cv::Mat& curr_image, bool include_augmented_image = false, bool rev_flow = false);
 
-protected:
-	// std::string GetAugmentedImage (std::string& image_base64);
-
-	cv::Mat prev_image;
-	double crop_factor = 0.6;
+	cv::Point2f get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image = false,
+                                 bool rev_flow = false);
 
 private:
-	// Parameters for Shi-Tomasi corner detection
-    int maxCorners = 50;
-    double qualityLevel = 0.2;
-    double minDistance = 10;
-    int blockSize = 5;
+    
+    cv::Mat prev_image_;
+	double crop_factor_ = 0.6;
 
-	// Parameters for Lucas-Kanade optical flow
-    cv::Size winSize = cv::Size(15, 15);
-    int maxLevel = 2;
-    cv::TermCriteria criteria = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
+	// Параметры обнаружения углов Ши-Томаса
+    int max_corners_ = 50;
+    double quality_level_ = 0.2;
+    double min_distance_ = 10;
+    int block_size_ = 5;
+
+	// Параметры для расчета оптического потока алгоритмом Лукаса-Канаде
+    cv::Size win_size_ = cv::Size(15, 15);
+    int max_level_ = 2;
+    cv::TermCriteria criteria_ = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
+
+    void get_augmented_image(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
+                             std::vector<cv::Point2f> good_old);
 };
 
 #endif // OPTICAL_FLOW_H_

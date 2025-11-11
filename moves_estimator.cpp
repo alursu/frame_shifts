@@ -7,15 +7,15 @@ MovesEstimator::MovesEstimator(float angle)
 {
     // Инициализация матрицы афинных преобразований 1 кадра
     // Задаем угол поворота 1 кадра относительно желаемой СК
-    InitMatrix(angle);
+    init_matrix(angle);
 }
 
-cv::Mat MovesEstimator::EstimateMovements(ImageData const &next)
+cv::Mat MovesEstimator::estimate_movements(ImageData const &next)
 {
-    auto keys1 = next.FirstKeypoints();
-    auto keys2 = next.SecondKeypoints();
+    auto keys1 = next.first_keypoints();
+    auto keys2 = next.second_keypoints();
     vector<Point2f> first, second;
-    auto matches = next.Matches();
+    auto matches = next.matches();
     for (auto const & match : matches)
     {
         // записываем координаты соответствующих друг другу особых
@@ -33,7 +33,7 @@ cv::Mat MovesEstimator::EstimateMovements(ImageData const &next)
     Mat transform = estimateAffinePartial2D(first, second, noArray(), RANSAC, 3);
 
     // Убираем коэффициент масштабирования из матрицы
-    CosnstantZoom(transform);
+    cosnstant_zoom(transform);
     
     // Инвертируем матрицу, чтобы получить значения в СК предыдущего кадра
     invertAffineTransform(transform, transform);
@@ -47,14 +47,14 @@ cv::Mat MovesEstimator::EstimateMovements(ImageData const &next)
     return transform;
 }
 
-void MovesEstimator::InitMatrix(float angle)
+void MovesEstimator::init_matrix(float angle)
 {
     // Единичная матрица (для угла = 0 и центральной точки = (0,0))
     prev = getRotationMatrix2D(Point2f(0,0), angle, 1);
     prev.push_back(Mat(vector<double>{0,0,1.0}).t());
 }
 
-void MovesEstimator::CosnstantZoom(Mat &mat)
+void MovesEstimator::cosnstant_zoom(Mat &mat)
 {
     // Вычисляем коэффициент масштабирования и убираем его из матрицы
     //        Изначальная матрица афинных преобразований

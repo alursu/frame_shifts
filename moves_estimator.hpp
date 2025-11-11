@@ -8,12 +8,15 @@
 class MovesEstimator
 {
 public:
+
     explicit MovesEstimator(float angle = 0);
-    cv::Mat EstimateMovements(ImageData const & next);
-protected:
-    void InitMatrix(float angle);
-    void CosnstantZoom(cv::Mat& mat);
+    
+    cv::Mat estimate_movements(ImageData const & next);
+
 private:
+
+    void init_matrix(float angle);
+    void cosnstant_zoom(cv::Mat& mat);
     cv::Mat prev;
 };
 
