@@ -5,7 +5,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
 
     if (curr_image.empty()) {
         return cv::Point2f(0,0);
-         //что-то нужно с этим сделать, как-то обработать
+        std::cerr << "Optical flow get empty image" << std::endl;
     }   
 
     cv::Mat curr_image_grey = curr_image.clone();
@@ -27,7 +27,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
     if (prev_image_.empty()) {
         prev_image_ = curr_image_grey.clone();
         return cv::Point2f(0,0);
-        // надо обработать
+        std::clog << "No previous image available" << std::endl;
     }
 
     std::vector<cv::Point2f> corners0;
@@ -38,7 +38,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
     if (corners0.empty()) {
         prev_image_ = curr_image_grey.clone();
         return cv::Point2f(0,0);
-        // надо обработать
+        std::cerr << "No corners detected in the previous image" << std::endl;
     }
 
     std::vector<cv::Point2f> corners1;
@@ -87,7 +87,8 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
 
     if (good_new.empty()) {
         return cv::Point2f(0,0);
-        // надо обработать
+        std::cerr << "Invalid points array shapes, good_new, good_old and good_errors is empty";
+        std::cerr << std::endl;
     }
 
     std::vector<cv::Point2f> flow_vectors;
@@ -120,8 +121,8 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
     flow_x *= 2.0;
     flow_y *= 2.0;
 
-    if (include_augmented_image)
-        get_augmented_image(curr_image, good_new, good_old);
+    // Расскомментировать для визуализации работы алгоритма
+    // vizualize_result(curr_image, good_new, good_old);
     
     return cv::Point2f(flow_x,flow_y);
 }
@@ -129,9 +130,9 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
 
 // Метод для отрисовки направлений смещения особых точек - пока не сохраняем 
 // это изображение в отдельный файл и не отображаем
-void OpticalFlowLkt::get_augmented_image(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
-                                         std::vector<cv::Point2f> good_old){
-
+void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
+                                         std::vector<cv::Point2f> good_old)
+{
     cv::Mat augmented_image = curr_image.clone();
 
     double scale_factor = 2.0;
@@ -164,6 +165,17 @@ void OpticalFlowLkt::get_augmented_image(const cv::Mat& curr_image, std::vector<
             cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
         }
     }
+
+    // Раскомментировать для демонстрации работы во время работы программы
+    // P.S.: Всплывающие окна закрывать нажатием любой клавиши
+    // cv::imshow("Lucas-Kanade result",augmented_image);
+    // cv::waitKey(0);
+
+    // Раскомментировать для сохранения результатов в папку result
+    // std::stringstream result_image_name;
+    // result_image_name << "./result/" << iter << ".png";
+    // cv::imwrite(result_image_name.str(), augmented_image);
+    // iter++;
 
     return;
 }

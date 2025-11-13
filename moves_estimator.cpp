@@ -10,6 +10,7 @@ MovesEstimator::MovesEstimator(float angle)
     init_matrix(angle);
 }
 
+
 cv::Mat MovesEstimator::estimate_movements(ImageData const &next)
 {
     auto keys1 = next.first_keypoints();
@@ -47,12 +48,14 @@ cv::Mat MovesEstimator::estimate_movements(ImageData const &next)
     return transform;
 }
 
+
 void MovesEstimator::init_matrix(float angle)
 {
     // Единичная матрица (для угла = 0 и центральной точки = (0,0))
     prev = getRotationMatrix2D(Point2f(0,0), angle, 1);
     prev.push_back(Mat(vector<double>{0,0,1.0}).t());
 }
+
 
 void MovesEstimator::cosnstant_zoom(Mat &mat)
 {

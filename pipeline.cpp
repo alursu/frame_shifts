@@ -31,6 +31,8 @@ int Pipeline::process_video()
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
+	UartInterface * port_test = new UartInterface();
+
 	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
@@ -40,14 +42,14 @@ int Pipeline::process_video()
 
 	// Захват видео
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
-	// std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
-	// cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
-	cap->open("../test1.avi");
+	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
+	cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
+	// cap->open("../test1.avi");
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
 	if (!cap->isOpened()){ 
-		std::cout << "Video source is not opened" << std::endl;
-		cap->release();
+		std::clog << "Video source is not opened" << std::endl;
+		cap.release();
 		return -1;
 	}
 
@@ -89,7 +91,8 @@ int Pipeline::process_video()
 		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
 		first = second.clone();
 		swap(firstInfo, secondInfo);
-		
+		cv::imshow("out", first);
+		cv::waitKey(5);
 		*cap >> second;
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
@@ -112,7 +115,7 @@ int Pipeline::process_video()
 
 		autopilot->write_optical_flow(shift.x, shift.y, flow_rate_x, flow_rate_y);
 
-		std::cout << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
+		std::clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 	}
 
 	// Закрываем файлы и источник видео
@@ -152,7 +155,7 @@ float Pipeline::calculate_vertical_fov(float hfov_deg, int width, int height) {
         return vfov_deg;
     } 
 	catch (const std::exception& e) {
-        fprintf(stderr,"Mathematical error calculating VFOV\n");
+		std::cerr << "Mathematical error calculating VFOV" << std::endl;
         return 0;
     }
 }
@@ -160,10 +163,7 @@ float Pipeline::calculate_vertical_fov(float hfov_deg, int width, int height) {
 
 void quit_handler(int sig)
 {
-
-	printf("\n");
-	printf("TERMINATING AT USER REQUEST\n");
-	printf("\n");
+	std::clog << std::endl << "TERMINATING AT USER REQUEST" << std::endl;
 
 	try {
 		autopilot_interface_quit_->handle_quit(sig);
@@ -177,5 +177,4 @@ void quit_handler(int sig)
 
 	// Завершение программы
 	exit(0);
-
 }

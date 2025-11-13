@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 
 	// Стартовое пороговое значение для BRISK
 	int threshold = 35;
-	std::cout << "Threshold " << threshold << std::endl;
+	std::clog << "Threshold " << threshold << std::endl;
 
 	// Создаем пайплайн
 	Pipeline stitch (threshold);

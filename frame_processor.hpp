@@ -23,6 +23,10 @@ private:
                                  FeatureInfo const & second, double relPower = 0.7);
     bool check_threshold(ImageData const & data);
 
+    void draw_keypoints_and_lines (cv::Mat &first_img, cv::Mat &second_img, 
+                                   FeatureInfo const &first, FeatureInfo const &second, 
+                                   std::vector<cv::DMatch> &goodMatches, std::string window_name);
+
 	cv::Ptr<cv::FeatureDetector> detector_;
 	cv::Ptr<cv::DescriptorExtractor> descriptor_;
 	cv::Ptr<cv::DescriptorMatcher> matcher_;

@@ -15,8 +15,7 @@ AutopilotInterface::AutopilotInterface()
 
 AutopilotInterface::AutopilotInterface(std::shared_ptr<UartInterface> port)
 {
-	// initialize attributes
-	time_to_exit_   = false;  // flag to signal thread exit
+	time_to_exit_   = false;  // Флаг окончания работы программы
 
 	system_id_    = 0; // system id
 	autopilot_id_ = 0; // autopilot component id
@@ -25,8 +24,7 @@ AutopilotInterface::AutopilotInterface(std::shared_ptr<UartInterface> port)
 	current_messages_.sysid_  = system_id_;
 	current_messages_.compid_ = autopilot_id_;
 
-	port_ = port; // port management object
-
+	port_ = port; // Объект управления портом ввода-вывода
 }
 
 AutopilotInterface::~AutopilotInterface()
@@ -37,33 +35,28 @@ AutopilotInterface::~AutopilotInterface()
 
 void AutopilotInterface::read_messages()
 {
-	bool success;               // receive success flag
-	bool received_all = false;  // receive only one message
+	bool success;               // Флаг успешного получения данных
+	bool received_all = false;  // Получаем только 1 сообщение
 	Time_Stamps this_timestamps;
 
-	// Blocking wait for new data
 	while ( !received_all && !time_to_exit_ && !received_first_message_)
 	{
 		mavlink_message_t message;
 		success = port_->read_message(message);
 
-		// ----------------------------------------------------------------------
-		//   HANDLE MESSAGE
-		// ----------------------------------------------------------------------
 		if( success )
 		{
-			// Store message sysid and compid.
-			// Note this doesn't handle multiple message sources.
+			// Сохраняем sysid и compid сообщения.
+			// Обрабатываем только один источник сообщений.
 			current_messages_.sysid_  = message.sysid;
 			current_messages_.compid_ = message.compid;
 
-			// Handle Message ID
+			// Обработка Message ID
 			switch (message.msgid)
 			{
 
 				case MAVLINK_MSG_ID_HEARTBEAT:
 				{
-					//printf("MAVLINK_MSG_ID_HEARTBEAT\n");
 					mavlink_msg_heartbeat_decode(&message, &(current_messages_.heartbeat_));
 					current_messages_.time_stamps_.heartbeat_ = get_time_usec();
 					this_timestamps.heartbeat_ = current_messages_.time_stamps_.heartbeat_;
@@ -72,7 +65,6 @@ void AutopilotInterface::read_messages()
 
 				case MAVLINK_MSG_ID_SYS_STATUS:
 				{
-					//printf("MAVLINK_MSG_ID_SYS_STATUS\n");
 					mavlink_msg_sys_status_decode(&message, &(current_messages_.sys_status_));
 					current_messages_.time_stamps_.sys_status_ = get_time_usec();
 					this_timestamps.sys_status_ = current_messages_.time_stamps_.sys_status_;
@@ -81,18 +73,17 @@ void AutopilotInterface::read_messages()
 
 				default:
 				{
-					// printf("Warning, did not handle message id %i\n",message.msgid);
 					break;
 				}
 
-			} // end: switch msgid
+			} 
 			received_first_message_ = true;
-		} // end: if read message
+		}
 
-		// Check for receipt of all items
+		// Проверка получения всех данных
 		received_all = this_timestamps.heartbeat_ && this_timestamps.sys_status_;
 
-	} // end: while not received all
+	} 
 
 	return;
 }
@@ -102,111 +93,107 @@ void AutopilotInterface::start()
 {
 	int result;
 
-	if ( !port_->is_running() ) // PORT_OPEN
+	if ( !port_->is_running() ) // Порт открыт
 	{
-		fprintf(stderr,"ERROR: port not open\n");
+		std::cerr << "ERROR: port not open" << std::endl;
 		throw 1;
 	}
 
-	printf("START READ THREAD \n");
+	std::clog << "START READ THREAD" << std::endl;
 	read_messages();
 
-
-	printf("CHECK FOR MESSAGES\n");
+	std::clog << "CHECK FOR MESSAGES" << std::endl;
 	while ( !current_messages_.sysid_ )
 	{
 		if ( time_to_exit_ )
 			return;
-		usleep(500000); // check at 2Hz
+		usleep(500000); // 2 Гц
 	}
-	printf("Found\n");
-	// now we know autopilot is sending messages
-	printf("\n");
-
+	std::clog << "Found" << std::endl;
+	std::clog << std::endl;
 
 	if ( !system_id_ )
 	{
 		system_id_ = current_messages_.sysid_;
-		printf("GOT VEHICLE SYSTEM ID: %i\n", system_id_ );
+		std::clog << "GOT VEHICLE SYSTEM ID: " << system_id_ << std::endl;
 	}
 
 	if ( !autopilot_id_ )
 	{
 		autopilot_id_ = current_messages_.compid_;
-		printf("GOT AUTOPILOT COMPONENT ID: %i\n", autopilot_id_);
-		printf("\n");
+		std::clog << "GOT AUTOPILOT COMPONENT ID: " << autopilot_id_ << std::endl;
+		std::clog << std::endl;
 	}
 
+	std::clog << "START WRITE THREAD" << std::endl;
+	write_optical_flow();
 
-	printf("START WRITE THREAD \n");
-	write_optical_flow(0,0,0,0);
-
-	// Done!
 	return;
-
 }
 
 
-void
-AutopilotInterface::
-stop()
+void AutopilotInterface::stop()
 {
+	std::clog << "CLOSE THREADS" << std::endl;
 
-	printf("CLOSE THREADS\n");
-
-	// signal exit
+	// Сигнал окончания работы программы
 	time_to_exit_ = true;
 
-	printf("\n");
-	// still need to close the port separately
+	std::clog << std::endl;
 }
 
 
-void
-AutopilotInterface::
-handle_quit( int sig )
+void AutopilotInterface::handle_quit( int sig )
 {
-
+	write_optical_flow(true);
 	try {
 		stop();
 	}
 	catch (int error) {
-		fprintf(stderr,"Warning, could not stop autopilot interface\n");
+		std::cerr << "Warning, could not stop autopilot interface" << std::endl;
 	}
-
 }
 
 
-void
-AutopilotInterface::
-write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float flow_rate_y)
+void AutopilotInterface::write_optical_flow(bool is_flow_reset, float flow_x, float flow_y, float flow_rate_x, 
+											float flow_rate_y, int quality, float ground_distance)
 {
-
     mavlink_optical_flow_t optical_flow;
-        
-    // Заполнение данных оптического потока
-	optical_flow.sensor_id = system_id_;
-    optical_flow.flow_x = flow_x;      // пиксели/сек
-    optical_flow.flow_y = flow_y;      // пиксели/сек
-    optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
-    optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
-    optical_flow.quality = 255;    // 0-255 (качество, по умолчанию 255)
-    optical_flow.ground_distance = -1; // метры (по умолчанию < 0, т.к. не знаем высоту)
-    optical_flow.flow_rate_x = flow_rate_x;
-    optical_flow.flow_rate_y = flow_rate_y;
-	optical_flow.time_usec = (uint32_t) (get_time_usec());
 
-	// write a message and signal writing
+	if (is_flow_reset){
+		// Сброс данных оптического потока
+		optical_flow.sensor_id = system_id_;
+		optical_flow.flow_x = 0;  
+		optical_flow.flow_y = 0;  
+		optical_flow.flow_comp_m_x = 0;  
+		optical_flow.flow_comp_m_y = 0;  
+		optical_flow.quality = 0;    
+		optical_flow.ground_distance = 0; 
+		optical_flow.flow_rate_x = 0;
+		optical_flow.flow_rate_y = 0;
+		optical_flow.time_usec = 0;
+	} else{
+		// Заполнение данных оптического потока
+		optical_flow.sensor_id = system_id_;
+		optical_flow.flow_x = flow_x;      // пиксели/сек
+		optical_flow.flow_y = flow_y;      // пиксели/сек
+		optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+		optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+		optical_flow.quality = quality;    // 0-255 (качество, по умолчанию 255)
+		optical_flow.ground_distance = ground_distance; // метры (по умолчанию < 0, т.к. не знаем высоту)
+		optical_flow.flow_rate_x = flow_rate_x;
+		optical_flow.flow_rate_y = flow_rate_y;
+		optical_flow.time_usec = (uint32_t) (get_time_usec());
+	}
+
 	mavlink_message_t message;
 	mavlink_msg_optical_flow_encode(system_id_, companion_id_, &message, &optical_flow);
 
-	// do the write
 	int len = port_->write_message(message);
 
-	// check the write
+	// Проверка отправки
 	if ( len <= 0 )
-		fprintf(stderr,"WARNING: could not send OPTICAL_FLOW \n");
+		std::cerr << "WARNING: could not send OPTICAL_FLOW" << std::endl;
 
 	return;
-
 }

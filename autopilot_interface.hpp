@@ -5,8 +5,8 @@
 #include <sys/time.h>
 #include <common/mavlink.h>
 #include <memory>
+#include <iostream>
 
-// helper functions
 uint64_t get_time_usec();
 
 // ------------------------------------------------------------------------------
@@ -33,8 +33,7 @@ struct Time_Stamps
 };
 
 
-// Struct containing information of the MAV we are currently connected to
-
+// Структура, содержащая информацию о MAV, к которому мы в данный момент подключены
 struct Mavlink_Messages {
 
 	int sysid_;
@@ -73,7 +72,8 @@ public:
 	Mavlink_Messages current_messages_;
 
 	void read_messages();
-	void write_optical_flow(float flow_x, float flow_y, float flow_rate_x, float flow_rate_y);
+	void write_optical_flow(bool is_flow_reset = false, float flow_x = 0, float flow_y = 0, float flow_rate_x = 0, 
+							float flow_rate_y = 0, int quality = 255, float ground_distance = -1);
 
 	void start();
 	void stop();

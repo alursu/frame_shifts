@@ -19,6 +19,7 @@ FrameProcessor::FrameProcessor(std::string detectorName, int threshold, int plan
     matcher_ = BFMatcher::create(NORM_HAMMING, false);
 }
 
+
 FeatureInfo FrameProcessor::get_keypoint_data(cv::Mat const &image)
 {
 	FeatureInfo frameInfo;
@@ -31,6 +32,7 @@ FeatureInfo FrameProcessor::get_keypoint_data(cv::Mat const &image)
     return frameInfo;
 }
 
+
 ImageData FrameProcessor::match_images(cv::InputArray& im1, FeatureInfo & first, cv::InputArray& im2,
                                   FeatureInfo & second, double relPower)
 {
@@ -42,13 +44,14 @@ ImageData FrameProcessor::match_images(cv::InputArray& im1, FeatureInfo & first,
 	// повторно определяем ключевые точки и дескрипторы для нового значения
 	while (!check_threshold(ret))
 	{
-		cout << "New threshold " << threshold << endl;
+		clog << "New threshold " << threshold << endl;
 		first = get_keypoint_data(im1.getMat());
 		second = get_keypoint_data(im2.getMat());
 		ret = match_descriptors(first, second, relPower);
 	}
 	return ret;
 }
+
 
 int FrameProcessor::set_threshold(int new_threshold)
 {
@@ -57,6 +60,7 @@ int FrameProcessor::set_threshold(int new_threshold)
 	ptr->setThreshold(new_threshold);
 	return ptr->getThreshold();
 }
+
 
 ImageData FrameProcessor::match_descriptors(FeatureInfo const &first, FeatureInfo const &second, double relPower)
 { 
@@ -83,6 +87,7 @@ ImageData FrameProcessor::match_descriptors(FeatureInfo const &first, FeatureInf
 	return retData;
 }
 
+
 bool FrameProcessor::check_threshold(ImageData const & data)
 {
 	// Если матчей меньше 90 и пороговое значение больше 10, снижаем порог на величину, 
@@ -107,3 +112,21 @@ bool FrameProcessor::check_threshold(ImageData const & data)
 	}
     return true;
 }
+
+void draw_keypoints_and_lines (cv::Mat &first_img, cv::Mat &second_img, FeatureInfo const &first, 
+    FeatureInfo const &second, std::vector<cv::DMatch> &goodMatches, std::string window_name){
+
+    cv::Mat img;
+    cv::Mat img_2;
+    cv::Mat result;
+
+    cv::drawKeypoints(first_img, first.keypoints_, img);
+    cv::drawKeypoints(second_img, second.keypoints_, img_2);
+    cv::drawMatches(img, first.keypoints_, img_2, second.keypoints_, goodMatches, result);
+
+    cv::namedWindow(window_name, cv::WINDOW_KEEPRATIO);
+    cv::imshow(window_name, result);
+    cv::resizeWindow(window_name, 600, 600);
+    cv::waitKey();
+    
+};

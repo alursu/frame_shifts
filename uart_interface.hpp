@@ -2,7 +2,7 @@
 #define UART_INTERFACE_H_
 
 
-#include <stdio.h>
+#include <iostream>
 #include <fcntl.h>   
 #include <termios.h> 
 #include <signal.h>

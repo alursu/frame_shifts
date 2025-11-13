@@ -42,7 +42,7 @@ int UartInterface::read_message(mavlink_message_t &message)
 	}
 	else
 	{
-		fprintf(stderr, "ERROR: Could not read from fd %d\n", uart_fd_);
+		std::cerr << "ERROR: Could not read from fd " << uart_fd_ << std::endl;
 	}
 
 	return msgReceived;
@@ -63,30 +63,32 @@ int UartInterface::write_message(const mavlink_message_t &message)
 
 void UartInterface::start()
 {
-	printf("OPEN PORT\n");
+	std::clog << "OPEN PORT" << std::endl;
 
 	uart_fd_ = open_port(uart_name_);
 	if (uart_fd_ == -1)
 	{
-		printf("failure, could not open port.\n");
+		std::cerr << "failure, could not open port." << std::endl;
 		throw EXIT_FAILURE;
 	}
 
 	bool success = setup_port(baudrate_, 8, 1, false, false);
 	if (!success)
 	{
-		printf("failure, could not configure port.\n");
+		std::cerr << "failure, could not configure port." << std::endl;
 		throw EXIT_FAILURE;
 	}
 	if (uart_fd_ <= 0)
 	{
-		printf("Connection attempt to port %s with %d baud, 8N1 failed, exiting.\n", uart_name_, baudrate_);
+		std::cerr << "Connection attempt to port " << uart_name_ << " with " << baudrate_ 
+				  << " baud, 8N1 failed, exiting." << std::endl;
 		throw EXIT_FAILURE;
 	}
 
-	printf("Connected to %s with %d baud, 8 data bits, no parity, 1 stop bit (8N1)\n", uart_name_, baudrate_);
+	std::clog << "Connected to " << uart_name_ << " with " << baudrate_ 
+			  << " baud, 8 data bits, no parity, 1 stop bit (8N1)" << std::endl;
 	is_open_ = true;
-	printf("\n");
+	std::clog << std::endl;
 
 	return;
 
@@ -95,16 +97,16 @@ void UartInterface::start()
 
 void UartInterface::stop()
 {
-	printf("CLOSE PORT\n");
+	std::clog << "CLOSE PORT" << std::endl;
 
 	int result = close(uart_fd_);
 	if ( result )
 	{
-		fprintf(stderr,"WARNING: Error on port close (%i)\n", result );
+		std::cerr << "WARNING: Error on port close " << result << std::endl;
 	}
 	is_open_ = false;
 	
-	printf("\n");
+	std::clog << std::endl;
 }
 
 
@@ -124,18 +126,21 @@ int UartInterface::open_port(const char* port)
 }
 
 
-bool UartInterface::setup_port(int baud, int data_bits, int stop_bits, bool parity, bool hardware_control)
+bool UartInterface::setup_port(int baud, int data_bits, int stop_bits, 
+							   bool parity, bool hardware_control)
 {
 	if(!isatty(uart_fd_))
 	{
-		fprintf(stderr, "\nERROR: file descriptor %d is NOT a serial port\n", uart_fd_);
+		std::cerr << std::endl << "ERROR: file descriptor " << uart_fd_ 
+				  << " is NOT a serial port" << std::endl;
 		return false;
 	}
 
 	struct termios  config;
 	if(tcgetattr(uart_fd_, &config) < 0)
 	{
-		fprintf(stderr, "\nERROR: could not read configuration of fd %d\n", uart_fd_);
+		std::cerr << std::endl << "ERROR: could not read configuration of fd " 
+				  << uart_fd_ << std::endl;
 		return false;
 	}
 
@@ -160,13 +165,15 @@ bool UartInterface::setup_port(int baud, int data_bits, int stop_bits, bool pari
 
 	if (cfsetispeed(&config, B115200) < 0 || cfsetospeed(&config, B115200) < 0)
 		{
-			fprintf(stderr, "\nERROR: Could not set desired baud rate of %d Baud\n", baud);
+			std::cerr << std::endl << "ERROR: Could not set desired baud rate of "
+					  << baud << " Baud" << std::endl;
 			return false;
 		}
 
 	if(tcsetattr(uart_fd_, TCSAFLUSH, &config) < 0)
 	{
-		fprintf(stderr, "\nERROR: could not set configuration of fd %d\n", uart_fd_);
+		std::cerr << std::endl << "ERROR: could not set configuration of fd "
+				  << uart_fd_ << std::endl;
 		return false;
 	}
 
