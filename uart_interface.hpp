@@ -1,17 +1,11 @@
 #ifndef UART_INTERFACE_H_
 #define UART_INTERFACE_H_
 
-
 #include <iostream>
 #include <fcntl.h>   
 #include <termios.h> 
 #include <signal.h>
-
 #include <common/mavlink.h>
-
-// ----------------------------------------------------------------------------------
-//   Serial Port Manager Class
-// ----------------------------------------------------------------------------------
 
 class UartInterface
 {

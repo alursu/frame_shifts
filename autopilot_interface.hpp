@@ -29,13 +29,11 @@ struct Time_Stamps
 		heartbeat_ = 0;
 		sys_status_ = 0;
 	}
-
 };
 
 
 // Структура, содержащая информацию о MAV, к которому мы в данный момент подключены
 struct Mavlink_Messages {
-
 	int sysid_;
 	int compid_;
 
@@ -48,7 +46,6 @@ struct Mavlink_Messages {
 	{
 		time_stamps_.reset_timestamps();
 	}
-
 };
 
 
@@ -58,7 +55,6 @@ struct Mavlink_Messages {
 
 class AutopilotInterface
 {
-
 public:
 
 	AutopilotInterface();
@@ -86,7 +82,6 @@ private:
 
 	bool time_to_exit_;
 	bool received_first_message_ = false;
-
 };
 
 #endif // AUTOPILOT_INTERFACE_H_

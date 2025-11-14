@@ -1,4 +1,5 @@
 #include "pipeline.hpp"
+#include <chrono>
 
 #define OFFSET 5
 #define OFFSET_Y 5
@@ -31,8 +32,6 @@ int Pipeline::process_video()
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
-	UartInterface * port_test = new UartInterface();
-
 	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
@@ -42,6 +41,10 @@ int Pipeline::process_video()
 
 	// Захват видео
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
+
+	// std::string gstreamer_pipeline_teplak = "gst-launch-1.0 v4l2src device=/dev/video2 ! video/x-raw,width=640,height=1032,format=YUY2 ! videoconvert ! appsink sync=false";
+	// cap->open(gstreamer_pipeline_teplak, cv::CAP_GSTREAMER);
+
 	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
 	cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
 	// cap->open("../test1.avi");
@@ -89,11 +92,11 @@ int Pipeline::process_video()
 	while (cap->grab())
 	{
 		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
+
 		first = second.clone();
 		swap(firstInfo, secondInfo);
-		cv::imshow("out", first);
-		cv::waitKey(5);
 		*cap >> second;
+
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
 			continue;
