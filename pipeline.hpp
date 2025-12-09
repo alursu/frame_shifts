@@ -2,13 +2,7 @@
 #define PIPELINE_H_
 
 #include <opencv2/opencv.hpp>
-
-// #include <opencv2/imgproc/imgproc.hpp>
-// #include <opencv2/core/core.hpp>
-// #include <opencv2/highgui.hpp>
-// #include <ctime>
-// #include <cmath>
-
+#include <chrono>
 #include "image_data.hpp"
 #include "frame_processor.hpp"
 #include "moves_estimator.hpp"
@@ -22,9 +16,9 @@ public:
 
 	explicit Pipeline(int threshold = 30, int octaves = 3);
 
-	int process_video();
+	int process_video(bool use_thermal_camera = false);
 
-protected:
+private:
 
 	FrameProcessor frameProcessor_;
 	MovesEstimator moves_estimator_;
@@ -32,11 +26,23 @@ protected:
 	std::vector<ImageData> matched_data_;
 	std::string outFile_;
 
-	clock_t previous_img_capture_time_ = 0;
-	//Для siyi-a8 mini
-	int camera_hfov_ = 81;
+	std::chrono::_V2::system_clock::time_point previous_img_capture_time_;
+	//Для siyi-a8 mini 81
+	//Для тепловизионной камеры ARKON 50
+	int camera_hfov_ = 50;
+
+	float tail_part_x = 0;
+	float tail_part_y = 0;
+	int percent_of_tail_for_use = 50;
+	float tail_part_to_use = 100/percent_of_tail_for_use;
+
+	std::string gstreamer_pipeline_thermal= "gst-launch-1.0 v4l2src device=/dev/video2 ! \
+											 video/x-raw,format=YUY2 ! videoconvert ! appsink sync=false";
+	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\"\
+									  latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
+	void fix_thermal_camera_frame(cv::Mat& frame);
 };
 
 #endif // PIPELINE_H_

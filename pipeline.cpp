@@ -1,5 +1,4 @@
 #include "pipeline.hpp"
-#include <chrono>
 
 #define OFFSET 5
 #define OFFSET_Y 5
@@ -21,7 +20,7 @@ Pipeline::Pipeline(int threshold, int octaves)
 }
 
 // Основной пайплайн
-int Pipeline::process_video()
+int Pipeline::process_video(bool use_thermal_camera)
 {
 	Mat first, second;
 
@@ -42,12 +41,10 @@ int Pipeline::process_video()
 	// Захват видео
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
 
-	// std::string gstreamer_pipeline_teplak = "gst-launch-1.0 v4l2src device=/dev/video2 ! video/x-raw,width=640,height=1032,format=YUY2 ! videoconvert ! appsink sync=false";
-	// cap->open(gstreamer_pipeline_teplak, cv::CAP_GSTREAMER);
-
-	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
-	cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
-	// cap->open("../test1.avi");
+	if (use_thermal_camera)
+		cap->open(gstreamer_pipeline_thermal, cv::CAP_GSTREAMER);
+	else 
+		cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
 	if (!cap->isOpened()){ 
@@ -62,10 +59,14 @@ int Pipeline::process_video()
 	// Если захватили кадр - начинаем обработку
 	if (cap->grab())
 	{
+		previous_img_capture_time_ = std::chrono::high_resolution_clock::now();
 		// Загружаем изображение. Загружаем в second, чтобы далее сравнивать соседние кадры
 		// Т.е. меняем second и first местами каждый раз, загружаем последующее изображение в 
 		// second
-		*cap >> second;
+		cap->retrieve(second);
+
+		if (use_thermal_camera)
+			fix_thermal_camera_frame(second);
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -78,12 +79,12 @@ int Pipeline::process_video()
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
 		// // Определяем ключевые точки изображения и соответствующие им дескрипторы
-		// secondInfo = frameProcessor_.GetKeypointData(second);
+		// secondInfo = frameProcessor_.get_keypoint_data(second);
 
 		shift = opticalflow.get_optical_flow(second);
 	}
 
-	int camera_vfov = calculate_vertical_fov(camera_hfov_, second.cols, second.rows);
+	int camera_vfov = calculate_vertical_fov(camera_hfov_, second.cols + 10, second.rows + 10);
 
 	float pixels_per_radian_h = second.cols / (camera_hfov_*M_PI / 180);
     float pixels_per_radian_v = second.rows / (camera_vfov*M_PI / 180);
@@ -91,34 +92,51 @@ int Pipeline::process_video()
 	// Пока можем захватывать кадры - обработка
 	while (cap->grab())
 	{
-		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
+		auto frame_grabbed_time = std::chrono::high_resolution_clock::now();
+		auto time_diff_btwn_capturing_imgs = std::chrono::duration_cast<std::chrono::microseconds>(frame_grabbed_time - previous_img_capture_time_);
+		float diff_btwn_capturing_imgs_sec = time_diff_btwn_capturing_imgs.count()/1000000.0;
 
 		first = second.clone();
 		swap(firstInfo, secondInfo);
-		*cap >> second;
+		cap->retrieve(second);
 
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
 			continue;
 		}
 
+		if (use_thermal_camera)
+			fix_thermal_camera_frame(second);
+
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
 		// // Сравниваем соседние кадры
-		// auto result = frameProcessor_.MatchImages(first, firstInfo, second, secondInfo);
+		// auto result = frameProcessor_.match_images(first, firstInfo, second, secondInfo);
 
 		// // Получаем на основе сравнения матрицу афинных преобразований
-		// cv::Mat move = moves_estimator_.EstimateMovements(result);
+		// cv::Mat move = moves_estimator_.estimate_movements(result);
 
 		shift = opticalflow.get_optical_flow(second);
 
-		float flow_rate_x = shift.x / (pixels_per_radian_h * (start - previous_img_capture_time_));
-		float flow_rate_y = shift.y / (pixels_per_radian_v * (start - previous_img_capture_time_));
+		float flow_rate_x = shift.x / (pixels_per_radian_h * (diff_btwn_capturing_imgs_sec));
+		float flow_rate_y = shift.y / (pixels_per_radian_v * (diff_btwn_capturing_imgs_sec));
+
+		tail_part_x+= (shift.x - (int)shift.x);
+		tail_part_y+= (shift.y - (int)shift.y);
+		if (abs(tail_part_x) > tail_part_to_use){
+			shift.x+=(tail_part_x > 0) ? 1 : -1;
+			tail_part_x+=(tail_part_x > 0) ? -tail_part_to_use : tail_part_to_use;
+		}
+		if(abs(tail_part_y) > tail_part_to_use){
+			shift.y+=(tail_part_y > 0) ? 1 : -1;
+			tail_part_y+=(tail_part_y > 0) ? -tail_part_to_use : tail_part_to_use;
+		}
 
 		autopilot->write_optical_flow(shift.x, shift.y, flow_rate_x, flow_rate_y);
-
 		std::clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
+
+		previous_img_capture_time_ = frame_grabbed_time;
 	}
 
 	// Закрываем файлы и источник видео
@@ -146,7 +164,7 @@ float Pipeline::calculate_vertical_fov(float hfov_deg, int width, int height) {
 
     try {
         float hfov_rad = hfov_deg * M_PI / 180;
-        float aspect_ratio = height / width;
+        float aspect_ratio = (float)height / width;
 
         float vfov_rad = 2 * std::atan(std::tan(hfov_rad / 2) * aspect_ratio);
         float vfov_deg = vfov_rad * 180 / M_PI;
@@ -180,4 +198,26 @@ void quit_handler(int sig)
 
 	// Завершение программы
 	exit(0);
+}
+
+void Pipeline::fix_thermal_camera_frame(cv::Mat& frame) {
+
+	if (frame.empty() || frame.cols <= 1) 
+		return;
+
+	//Меняем местами правую и левую половины кадра
+	int half = frame.cols / 2;
+	cv::Mat left = frame(cv::Rect(0, 0, half, frame.rows));
+	cv::Mat right = frame(cv::Rect(half, 0, half, frame.rows));
+
+	frame.release();
+	cv::hconcat(right, left, frame); // Меняем местами
+
+	int half_height = frame.rows / 2;
+
+	// Оставляем нижнюю половину (основную часть)
+	cv::Rect main_rect(0, half_height+8, frame.cols, half_height-8);
+	frame = frame(main_rect);
+
+	return;
 }

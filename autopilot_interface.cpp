@@ -172,7 +172,7 @@ void AutopilotInterface::write_optical_flow(bool is_flow_reset, float flow_x, fl
 		optical_flow.flow_rate_x = 0;
 		optical_flow.flow_rate_y = 0;
 		optical_flow.time_usec = 0;
-	} else{
+	} else {
 		// Заполнение данных оптического потока
 		optical_flow.sensor_id = system_id_;
 		optical_flow.flow_x = flow_x;      // пиксели/сек

@@ -43,7 +43,7 @@ cv::Mat MovesEstimator::estimate_movements(ImageData const &next)
 
     // Домножаем на прошлую матрицу, чтобы все значения смещений 
     // были в единой СК - СК 1-го кадра
-    transform = prev * transform;
+    // transform = prev * transform;
     prev = transform;
     return transform;
 }
