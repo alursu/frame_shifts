@@ -38,7 +38,7 @@ private:
 	int percent_of_tail_for_use = 50;
 	float tail_part_to_use = 100/percent_of_tail_for_use;
 
-	std::string gstreamer_pipeline_thermal= "gst-launch-1.0 v4l2src device=/dev/video2 ! \
+	std::string gstreamer_pipeline_thermal= "gst-launch-1.0 v4l2src device=/dev/video0 ! \
 											 video/x-raw,format=YUY2 ! videoconvert ! appsink sync=false";
 	std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\"\
 									  latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";

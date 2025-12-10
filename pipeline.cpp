@@ -31,7 +31,7 @@ int Pipeline::process_video(bool use_thermal_camera)
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
-	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
+	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyAMA0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
 	port_quit_ = port;
@@ -53,8 +53,8 @@ int Pipeline::process_video(bool use_thermal_camera)
 		return -1;
 	}
 
-	// port->start();
-	// autopilot->start();
+	port->start();
+	autopilot->start();
 
 	std::string output_folder = create_output_folder();
 	int save_counter = 0;
@@ -241,7 +241,7 @@ std::string Pipeline::create_output_folder() {
     std::tm tm = *std::localtime(&time);
     
     std::ostringstream oss;
-    oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    oss << "home/admin/frame_shifts/build/" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string folder_name = oss.str();
     
     mkdir(folder_name.c_str(), 0777);
