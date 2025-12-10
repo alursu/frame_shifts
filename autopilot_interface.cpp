@@ -145,7 +145,7 @@ void AutopilotInterface::stop()
 
 void AutopilotInterface::handle_quit( int sig )
 {
-	write_optical_flow(true);
+	write_optical_flow_reset();
 	try {
 		stop();
 	}
@@ -155,36 +155,50 @@ void AutopilotInterface::handle_quit( int sig )
 }
 
 
-void AutopilotInterface::write_optical_flow(bool is_flow_reset, float flow_x, float flow_y, float flow_rate_x, 
+void AutopilotInterface::write_optical_flow(float flow_x, float flow_y, float flow_rate_x, 
 											float flow_rate_y, int quality, float ground_distance)
 {
     mavlink_optical_flow_t optical_flow;
 
-	if (is_flow_reset){
-		// Сброс данных оптического потока
-		optical_flow.sensor_id = system_id_;
-		optical_flow.flow_x = 0;  
-		optical_flow.flow_y = 0;  
-		optical_flow.flow_comp_m_x = 0;  
-		optical_flow.flow_comp_m_y = 0;  
-		optical_flow.quality = 0;    
-		optical_flow.ground_distance = 0; 
-		optical_flow.flow_rate_x = 0;
-		optical_flow.flow_rate_y = 0;
-		optical_flow.time_usec = 0;
-	} else {
-		// Заполнение данных оптического потока
-		optical_flow.sensor_id = system_id_;
-		optical_flow.flow_x = flow_x;      // пиксели/сек
-		optical_flow.flow_y = flow_y;      // пиксели/сек
-		optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
-		optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
-		optical_flow.quality = quality;    // 0-255 (качество, по умолчанию 255)
-		optical_flow.ground_distance = ground_distance; // метры (по умолчанию < 0, т.к. не знаем высоту)
-		optical_flow.flow_rate_x = flow_rate_x;
-		optical_flow.flow_rate_y = flow_rate_y;
-		optical_flow.time_usec = (uint32_t) (get_time_usec());
-	}
+	// Заполнение данных оптического потока
+	optical_flow.sensor_id = system_id_;
+	optical_flow.flow_x = flow_x;      // пиксели/сек
+	optical_flow.flow_y = flow_y;      // пиксели/сек
+	optical_flow.flow_comp_m_x = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+	optical_flow.flow_comp_m_y = 0;    // всегда 0, т.к. считаем, что камера всегда направлена вниз
+	optical_flow.quality = quality;    // 0-255 (качество, по умолчанию 255)
+	optical_flow.ground_distance = ground_distance; // метры (по умолчанию < 0, т.к. не знаем высоту)
+	optical_flow.flow_rate_x = flow_rate_x;
+	optical_flow.flow_rate_y = flow_rate_y;
+	optical_flow.time_usec = (uint32_t) (get_time_usec());
+
+	mavlink_message_t message;
+	mavlink_msg_optical_flow_encode(system_id_, companion_id_, &message, &optical_flow);
+
+	int len = port_->write_message(message);
+
+	// Проверка отправки
+	if ( len <= 0 )
+		std::cerr << "WARNING: could not send OPTICAL_FLOW" << std::endl;
+
+	return;
+}
+
+void AutopilotInterface::write_optical_flow_reset()
+{
+	mavlink_optical_flow_t optical_flow;
+
+	// Сброс данных оптического потока
+	optical_flow.sensor_id = system_id_;
+	optical_flow.flow_x = 0;  
+	optical_flow.flow_y = 0;  
+	optical_flow.flow_comp_m_x = 0;  
+	optical_flow.flow_comp_m_y = 0;  
+	optical_flow.quality = 0;    
+	optical_flow.ground_distance = 0; 
+	optical_flow.flow_rate_x = 0;
+	optical_flow.flow_rate_y = 0;
+	optical_flow.time_usec = 0;
 
 	mavlink_message_t message;
 	mavlink_msg_optical_flow_encode(system_id_, companion_id_, &message, &optical_flow);
