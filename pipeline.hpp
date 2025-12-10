@@ -3,6 +3,8 @@
 
 #include <opencv2/opencv.hpp>
 #include <chrono>
+#include <sys/stat.h>
+#include <iomanip>
 #include "image_data.hpp"
 #include "frame_processor.hpp"
 #include "moves_estimator.hpp"
@@ -43,6 +45,7 @@ private:
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	void fix_thermal_camera_frame(cv::Mat& frame);
+	std::string create_output_folder();
 };
 
 #endif // PIPELINE_H_

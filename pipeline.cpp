@@ -53,8 +53,11 @@ int Pipeline::process_video(bool use_thermal_camera)
 		return -1;
 	}
 
-	port->start();
-	autopilot->start();
+	// port->start();
+	// autopilot->start();
+
+	std::string output_folder = create_output_folder();
+	int save_counter = 0;
 
 	// Если захватили кадр - начинаем обработку
 	if (cap->grab())
@@ -65,8 +68,13 @@ int Pipeline::process_video(bool use_thermal_camera)
 		// second
 		cap->retrieve(second);
 
-		if (use_thermal_camera)
+		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
+
+			std::ostringstream oss;
+    		oss << output_folder << "/frame_" << std::setfill('0') << std::setw(6) << save_counter++ << ".jpg";
+    		cv::imwrite(oss.str(), second);
+		}
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -105,8 +113,13 @@ int Pipeline::process_video(bool use_thermal_camera)
 			continue;
 		}
 
-		if (use_thermal_camera)
+		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
+
+			std::ostringstream oss;
+    		oss << output_folder << "/frame_" << std::setfill('0') << std::setw(6) << save_counter++ << ".jpg";
+    		cv::imwrite(oss.str(), second);
+		}
 
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
@@ -220,4 +233,17 @@ void Pipeline::fix_thermal_camera_frame(cv::Mat& frame) {
 	frame = frame(main_rect);
 
 	return;
+}
+
+std::string Pipeline::create_output_folder() {
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&time);
+    
+    std::ostringstream oss;
+    oss << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    std::string folder_name = oss.str();
+    
+    mkdir(folder_name.c_str(), 0777);
+    return folder_name;
 }
