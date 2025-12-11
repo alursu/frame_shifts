@@ -36,7 +36,7 @@ private:
 	float tail_part_x = 0;
 	float tail_part_y = 0;
 	int percent_of_tail_for_use = 50;
-	float tail_part_to_use = 100/percent_of_tail_for_use;
+	float tail_part_to_use = 100.0/percent_of_tail_for_use;
 
 	std::string gstreamer_pipeline_thermal= "gst-launch-1.0 v4l2src device=/dev/video0 ! \
 											 video/x-raw,format=YUY2 ! videoconvert ! appsink sync=false";
