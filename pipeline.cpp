@@ -92,10 +92,10 @@ int Pipeline::process_video(bool use_thermal_camera)
 		shift = opticalflow.get_optical_flow(second);
 	}
 
-	int camera_vfov = calculate_vertical_fov(camera_hfov_, second.cols + 10, second.rows + 10);
+	float camera_vfov = calculate_vertical_fov(camera_hfov_, second.cols + 10, second.rows + 10);
 
-	float pixels_per_radian_h = second.cols / (camera_hfov_*M_PI / 180);
-    float pixels_per_radian_v = second.rows / (camera_vfov*M_PI / 180);
+	float pixels_per_radian_h = (second.cols + 10) / (camera_hfov_*M_PI / 180);
+    float pixels_per_radian_v = (second.rows + 10) / (camera_vfov*M_PI / 180);
 
 	// Пока можем захватывать кадры - обработка
 	while (cap->grab())
@@ -231,6 +231,8 @@ void Pipeline::fix_thermal_camera_frame(cv::Mat& frame) {
 	// Оставляем нижнюю половину (основную часть)
 	cv::Rect main_rect(0, half_height+8, frame.cols, half_height-8);
 	frame = frame(main_rect);
+
+	cv::rotate(frame, frame, cv::ROTATE_90_CLOCKWISE);
 
 	return;
 }

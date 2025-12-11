@@ -31,7 +31,8 @@ private:
 	std::chrono::_V2::system_clock::time_point previous_img_capture_time_;
 	//Для siyi-a8 mini 81
 	//Для тепловизионной камеры ARKON 50
-	int camera_hfov_ = 50;
+	//Для тепловизионной камеры ARKON 38.5526 при повороте на 90 градусов
+	float camera_hfov_ = 38.5526;
 
 	float tail_part_x = 0;
 	float tail_part_y = 0;
