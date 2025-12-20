@@ -42,9 +42,9 @@ int Pipeline::process_video(bool use_thermal_camera)
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
 
 	if (use_thermal_camera)
-		cap->open(gstreamer_pipeline_thermal, cv::CAP_GSTREAMER);
+		cap->open(gstreamer_pipeline_thermal_, cv::CAP_GSTREAMER);
 	else 
-		cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
+		cap->open(gstreamer_pipeline_, cv::CAP_GSTREAMER);
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
 	if (!cap->isOpened()){ 
@@ -55,9 +55,6 @@ int Pipeline::process_video(bool use_thermal_camera)
 
 	port->start();
 	autopilot->start();
-
-	std::string output_folder = create_output_folder();
-	int save_counter = 0;
 
 	// Если захватили кадр - начинаем обработку
 	if (cap->grab())
@@ -71,9 +68,10 @@ int Pipeline::process_video(bool use_thermal_camera)
 		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
 
-			std::ostringstream oss;
-    		oss << output_folder << "/frame_" << std::setfill('0') << std::setw(6) << save_counter++ << ".jpg";
-    		cv::imwrite(oss.str(), second);
+			std::ostringstream saving_path;
+			output_folder_ = create_output_folder();
+    		saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    		cv::imwrite(saving_path.str(), second);
 		}
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
@@ -116,9 +114,9 @@ int Pipeline::process_video(bool use_thermal_camera)
 		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
 
-			std::ostringstream oss;
-    		oss << output_folder << "/frame_" << std::setfill('0') << std::setw(6) << save_counter++ << ".jpg";
-    		cv::imwrite(oss.str(), second);
+			std::ostringstream saving_path;
+    		saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    		cv::imwrite(saving_path.str(), second);
 		}
 
 		second = Mat(second, cropRect);
@@ -132,22 +130,22 @@ int Pipeline::process_video(bool use_thermal_camera)
 
 		shift = opticalflow.get_optical_flow(second);
 
-		float flow_rate_x = shift.x / (pixels_per_radian_h * (diff_btwn_capturing_imgs_sec));
-		float flow_rate_y = shift.y / (pixels_per_radian_v * (diff_btwn_capturing_imgs_sec));
+		tail_part_x_+= (shift.x - (int)shift.x);
+		tail_part_y_+= (shift.y - (int)shift.y);
+		if (abs(tail_part_x_) > tail_part_to_use_){
+			shift.x+=(tail_part_x_ > 0) ? 1 : -1;
+			tail_part_x_+=(tail_part_x_ > 0) ? -tail_part_to_use_ : tail_part_to_use_;
+		}
+		if(abs(tail_part_y_) > tail_part_to_use_){
+			shift.y+=(tail_part_y_ > 0) ? 1 : -1;
+			tail_part_y_+=(tail_part_y_ > 0) ? -tail_part_to_use_ : tail_part_to_use_;
+		}
 
-		tail_part_x+= (shift.x - (int)shift.x);
-		tail_part_y+= (shift.y - (int)shift.y);
-		if (abs(tail_part_x) > tail_part_to_use){
-			shift.x+=(tail_part_x > 0) ? 1 : -1;
-			tail_part_x+=(tail_part_x > 0) ? -tail_part_to_use : tail_part_to_use;
-		}
-		if(abs(tail_part_y) > tail_part_to_use){
-			shift.y+=(tail_part_y > 0) ? 1 : -1;
-			tail_part_y+=(tail_part_y > 0) ? -tail_part_to_use : tail_part_to_use;
-		}
+		float flow_rate_x = shift.x / (pixels_per_radian_h * diff_btwn_capturing_imgs_sec);
+		float flow_rate_y = shift.y / (pixels_per_radian_v * diff_btwn_capturing_imgs_sec);
 
 		autopilot->write_optical_flow(shift.x, shift.y, flow_rate_x, flow_rate_y);
-		std::clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
+		clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 
 		previous_img_capture_time_ = frame_grabbed_time;
 	}
@@ -156,7 +154,6 @@ int Pipeline::process_video(bool use_thermal_camera)
 	port->stop();
 	autopilot->stop();
 	cap->release();
-
 	return 0;
 }
 

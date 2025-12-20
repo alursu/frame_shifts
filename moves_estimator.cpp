@@ -26,12 +26,23 @@ cv::Mat MovesEstimator::estimate_movements(ImageData const &next)
         second.push_back(Point2f(keys2[match.trainIdx].pt));
     }
     
+    // Если нет матчей, возвращаем пустую матрицу
+    if (first.empty()){
+        return cv::Mat::zeros(cv::Size(3,3), CV_32F);
+    }
+
     // вычисляем по координатам матрицу афинных преобразований
     // в матрице содержатся угол поворота, смещение и коэффициент масштабирования
     // все значения определены в СК нынешнего кадра.
     // Ориентация осей : y - вниз; x - вправо.
     // Угол поворота считается "+", если вращение по часовой стрелке.
     Mat transform = estimateAffinePartial2D(first, second, noArray(), RANSAC, 3);
+
+    // Если не смогли определить матрицу афинных преобразований,
+    // возвращаем пустую матрицу
+    if (transform.empty()){
+        return cv::Mat::zeros(cv::Size(3,3), CV_32F);
+    }
 
     // Убираем коэффициент масштабирования из матрицы
     cosnstant_zoom(transform);

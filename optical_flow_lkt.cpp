@@ -161,8 +161,9 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
 
         if (ia >= 0 && ia < w_orig && ib >= 0 && ib < h_orig &&
             ic >= 0 && ic < w_orig && id >= 0 && id < h_orig) {
-            cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
-            cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
+            cv::arrowedLine(augmented_image, cv::Point(ia, ib), cv::Point( ic, id), cv::Scalar(0), 1, 8, 0, 1);
+            // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
+            // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
         }
     }
 
@@ -173,9 +174,8 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
 
     // Раскомментировать для сохранения результатов в папку result
     // std::stringstream result_image_name;
-    // result_image_name << "./result/" << iter << ".png";
+    // result_image_name << "./result_siyi100/" << "/frame_" << std::setfill('0') << std::setw(6) << iter++ << ".jpg";
     // cv::imwrite(result_image_name.str(), augmented_image);
-    // iter++;
 
     return;
 }

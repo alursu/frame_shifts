@@ -11,13 +11,13 @@ int main(int argc, char* argv[])
 	cv::utils::logging::setLogLevel(cv::utils::logging::LogLevel::LOG_LEVEL_ERROR);
 
 	// Стартовое пороговое значение для BRISK
-	int threshold = 35;
+	int threshold = 40;
 	std::clog << "Threshold " << threshold << std::endl;
 
 	// Создаем пайплайн
 	Pipeline stitch (threshold);
 
 	// Запуск пайплайна
-	stitch.process_video(true);
+	stitch.process_video();
  	return 0;
 }

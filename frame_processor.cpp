@@ -39,16 +39,24 @@ ImageData FrameProcessor::match_images(cv::InputArray& im1, FeatureInfo & first,
 	second = get_keypoint_data(im2.getMat());
 	ImageData ret = match_descriptors(first, second, relPower);
 
+	previous_matches_size_ = ret.matches().size();
+	gain_for_step_ = 20;
+
 	// Пока кол-во отфильтрованных матчей не будет соответствовать 
 	// указанному диапазону 90-360, меняем пороговое значение и 
 	// повторно определяем ключевые точки и дескрипторы для нового значения
 	while (!check_threshold(ret))
 	{
-		clog << "New threshold " << threshold << endl;
+		clog << "New threshold " << threshold_ << endl;
 		first = get_keypoint_data(im1.getMat());
 		second = get_keypoint_data(im2.getMat());
 		ret = match_descriptors(first, second, relPower);
-	}
+		if (threshold_ == minimum_threshold_)
+			break;
+	} 
+	// Раскомментировать для отображения результатов работы алгоритма
+	// cv::Mat img = im2.getMat();
+	// draw_arrow_lines(img, first, second, ret.matches());
 	return ret;
 }
 
@@ -73,13 +81,27 @@ ImageData FrameProcessor::match_descriptors(FeatureInfo const &first, FeatureInf
 	// а матч записывается в goodMatches, иначе сопоставление расценивается как случайное совпадение.
 	vector<cv::DMatch> goodMatches;
 	std::vector<std::vector<cv::DMatch>> knnMatches;
+	ImageData retData;
+
 	matcher_->knnMatch(first.descriptors_, second.descriptors_, knnMatches,2);
+
+	// Если количество матчей 0 или 1, возвращаем данные без фильтрации  
+	if (knnMatches.size() < 2){
+		retData.set_keypoints(first.keypoints_,second.keypoints_);
+		retData.set_matches(goodMatches);
+		return retData;
+	}
+
 	for (auto match : knnMatches)
 	{
+		//Если для дескриптора особой точки одного изображения не было найдено ни
+		// одного сопоставления, пропускаем итерацию и переходим к следующей точке.
+		if (match.empty())
+			continue;
+
 		if (match[0].distance < relPower * match[1].distance)
 			goodMatches.push_back(match[0]);
 	}
-	ImageData retData;
 
 	// Сохраняем отфильтрованные матчи
 	retData.set_keypoints(first.keypoints_,second.keypoints_);
@@ -93,29 +115,52 @@ bool FrameProcessor::check_threshold(ImageData const & data)
 	// Если матчей меньше 90 и пороговое значение больше 10, снижаем порог на величину, 
 	// зависящую от степени отличия нынешнего кол-ва матчей и "центрального" значения из 
 	// указанного диапазона матчей
+	// Также для избежания "хождения по кругу" из одних и тех же значений, не удовлетворяющих
+	// условиям, редактируется коэффициент gain_for_step для порогового значения
 	auto totalMatches = data.matches().size();
-	if (totalMatches < minimum_features_required_ && threshold_>minimum_threshold_)
+
+	// Если нет кол-ва матчей, удовлятворяющих установленному диапазону,
+	// выбираем пороговое значение, при котором кол-во матчей превышает диапазон
+	if (gain_for_step_ == 1 && totalMatches > 4 * minimum_features_required_)
+		return true;
+
+	float percent_diff_to_middle = totalMatches/(2.5*minimum_features_required_);
+	if (percent_diff_to_middle > 1)
+		percent_diff_to_middle = pow(percent_diff_to_middle, -1); 
+
+	if (totalMatches < minimum_features_required_)
 	{
-		threshold_-= static_cast<int>(ceil((1-totalMatches/(2.5*minimum_features_required_))*20));
+		if (previous_matches_size_ > 4 * minimum_features_required_)
+			gain_for_step_ = ceil(gain_for_step_/2.0);
+
+		threshold_-= static_cast<int>(ceil((1-percent_diff_to_middle)*gain_for_step_));
+
 		if (threshold_ < minimum_threshold_)
 			threshold_ = minimum_threshold_;
+
 		set_threshold(threshold_);
+		previous_matches_size_ = totalMatches;
 		return false;
 	}
 
 	// Аналогично, проверяем верхнуюю границу - 360. 
 	if (totalMatches > 4 * minimum_features_required_)
 	{
-		threshold_+= static_cast<int>(ceil((1-(2.5*minimum_features_required_)/totalMatches)*20));
+		if (previous_matches_size_ < minimum_features_required_)
+			gain_for_step_ = ceil(gain_for_step_/2.0);
+
+		threshold_+= static_cast<int>(ceil((1-percent_diff_to_middle)*gain_for_step_));
 		set_threshold(threshold_);
+		previous_matches_size_ = totalMatches;
 		return false;
 	}
     return true;
 }
 
-void draw_keypoints_and_lines (cv::Mat &first_img, cv::Mat &second_img, FeatureInfo const &first, 
-    FeatureInfo const &second, std::vector<cv::DMatch> &goodMatches, std::string window_name){
-
+void FrameProcessor::draw_keypoints_and_lines(cv::Mat &first_img, cv::Mat &second_img, 
+											  FeatureInfo const &first, FeatureInfo const &second, 
+											  std::vector<cv::DMatch> &goodMatches, std::string window_name)
+{
     cv::Mat img;
     cv::Mat img_2;
     cv::Mat result;
@@ -128,5 +173,28 @@ void draw_keypoints_and_lines (cv::Mat &first_img, cv::Mat &second_img, FeatureI
     cv::imshow(window_name, result);
     cv::resizeWindow(window_name, 600, 600);
     cv::waitKey();
-    
-};
+}
+
+void FrameProcessor::draw_arrow_lines(cv::Mat &curr_image, FeatureInfo const &first, 
+									  FeatureInfo const &second, std::vector<cv::DMatch> matches)
+{
+	cv::Mat img = curr_image.clone();
+    for (auto const & match : matches)
+    {
+		Point2f end_point = Point2f(first.keypoints_[match.queryIdx].pt);
+		Point2f start_point = Point2f(second.keypoints_[match.trainIdx].pt);
+		cv::arrowedLine(img, start_point, end_point, cv::Scalar(0), 1, 8, 0, 1);
+    }
+
+	// Раскомментировать для демонстрации работы во время работы программы
+    // P.S.: Всплывающие окна закрывать нажатием любой клавиши
+    // cv::imshow("BRISK result", img);
+    // cv::waitKey(0);
+
+    // Раскомментировать для сохранения результатов в папку result
+    std::stringstream result_image_name;
+    result_image_name << "./result_brisk_siyi100/" << "/frame_" << std::setfill('0') << std::setw(6) << iter_++ << ".jpg";
+    cv::imwrite(result_image_name.str(), img);
+
+    return;
+}
