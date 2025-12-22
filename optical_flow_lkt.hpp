@@ -5,6 +5,8 @@
 #include <ctime>
 #include <iostream>
 #include <iomanip>
+#include <fstream>
+#include <sys/stat.h>
 
 class OpticalFlowLkt
 {
@@ -29,8 +31,10 @@ private:
     int max_level_ = 2;
     cv::TermCriteria criteria_ = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
 
-    int iter = 0;
+    int iter_ = 0;
+    std::string output_folder_;
 
+    std::string create_output_folder();
     void vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
                              std::vector<cv::Point2f> good_old);
 };

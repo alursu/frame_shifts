@@ -158,7 +158,8 @@ int Pipeline::process_video(bool use_thermal_camera)
 }
 
 
-float Pipeline::calculate_vertical_fov(float hfov_deg, int width, int height) {
+float Pipeline::calculate_vertical_fov(float hfov_deg, int width, int height) 
+{
 	/**
 	* Рассчитывает вертикальный FOV на основе горизонтального FOV и разрешения изображения
 	* tan(vfov/2) = tan(hfov/2) * (height/weight)
@@ -210,7 +211,8 @@ void quit_handler(int sig)
 	exit(0);
 }
 
-void Pipeline::fix_thermal_camera_frame(cv::Mat& frame) {
+void Pipeline::fix_thermal_camera_frame(cv::Mat& frame) 
+{
 
 	if (frame.empty() || frame.cols <= 1) 
 		return;
@@ -234,7 +236,8 @@ void Pipeline::fix_thermal_camera_frame(cv::Mat& frame) {
 	return;
 }
 
-std::string Pipeline::create_output_folder() {
+std::string Pipeline::create_output_folder() 
+{
     auto now = std::chrono::system_clock::now();
     auto time = std::chrono::system_clock::to_time_t(now);
     std::tm tm = *std::localtime(&time);

@@ -122,7 +122,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
     flow_y *= 2.0;
 
     // Расскомментировать для визуализации работы алгоритма
-    // vizualize_result(curr_image, good_new, good_old);
+    vizualize_result(curr_image, good_new, good_old);
     
     return cv::Point2f(flow_x,flow_y);
 }
@@ -173,9 +173,23 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
     // cv::waitKey(0);
 
     // Раскомментировать для сохранения результатов в папку result
-    // std::stringstream result_image_name;
-    // result_image_name << "./result_siyi100/" << "/frame_" << std::setfill('0') << std::setw(6) << iter++ << ".jpg";
-    // cv::imwrite(result_image_name.str(), augmented_image);
+    std::stringstream result_image_name;
+    result_image_name << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << iter_++ << ".jpg";
+    cv::imwrite(result_image_name.str(), augmented_image);
 
     return;
+}
+
+std::string OpticalFlowLkt::create_output_folder() 
+{
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&time);
+    
+    std::ostringstream oss;
+    oss << "/home/admin/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    std::string folder_name = oss.str();
+    
+    mkdir(folder_name.c_str(), 0777);
+    return folder_name;
 }
