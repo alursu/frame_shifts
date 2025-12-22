@@ -240,7 +240,7 @@ std::string Pipeline::create_output_folder() {
     std::tm tm = *std::localtime(&time);
     
     std::ostringstream oss;
-    oss << "home/admin/frame_shifts/build/" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    oss << "/home/admin/frame_shifts/build/" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string folder_name = oss.str();
     
     mkdir(folder_name.c_str(), 0777);
