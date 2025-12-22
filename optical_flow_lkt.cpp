@@ -1,7 +1,13 @@
 #include "optical_flow_lkt.hpp"
 
-cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image, 
-                                             bool rev_flow) {
+OpticalFlowLkt::OpticalFlowLkt()
+{
+    output_folder_ = create_output_folder();
+}
+
+cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool include_augmented_image,
+                                             bool rev_flow)
+{
 
     if (curr_image.empty()) {
         return cv::Point2f(0,0);
@@ -126,7 +132,6 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
     
     return cv::Point2f(flow_x,flow_y);
 }
-
 
 // Метод для отрисовки направлений смещения особых точек - пока не сохраняем 
 // это изображение в отдельный файл и не отображаем

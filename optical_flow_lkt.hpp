@@ -12,6 +12,7 @@ class OpticalFlowLkt
 {
 public:
 
+    OpticalFlowLkt();
 	cv::Point2f get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image = false,
                                  bool rev_flow = false);
 
