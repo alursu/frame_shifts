@@ -67,12 +67,11 @@ int Pipeline::process_video(bool use_thermal_camera)
 
 		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
-
-			std::ostringstream saving_path;
-			output_folder_ = create_output_folder();
-    		saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    		cv::imwrite(saving_path.str(), second);
 		}
+		std::ostringstream saving_path;
+		output_folder_ = create_output_folder();
+    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	cv::imwrite(saving_path.str(), second);
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -113,11 +112,10 @@ int Pipeline::process_video(bool use_thermal_camera)
 
 		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
-
-			std::ostringstream saving_path;
-    		saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    		cv::imwrite(saving_path.str(), second);
 		}
+		std::ostringstream saving_path;
+    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	cv::imwrite(saving_path.str(), second);
 
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);

@@ -51,7 +51,7 @@ private:
 	// std::string gstreamer_pipeline_ = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\"\
 	// 								  latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
 	// usb веб-камера A4Tech PK-333E 
-	std::string gstreamer_pipeline = "gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! \
+	std::string gstreamer_pipeline_ = "gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! \
 									  videorate ! video/x-raw,framerate=25/1 ! appsink sync=false";
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
