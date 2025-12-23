@@ -33,7 +33,8 @@ private:
 	//Для siyi-a8 mini 81
 	//Для тепловизионной камеры ARKON 50
 	//Для тепловизионной камеры ARKON 38.5526 при повороте на 90 градусов
-	float camera_hfov_ = 81;
+	//Для веб-камеры A4Tech PK-333E 66
+	float camera_hfov_ = 66;
 
 	float tail_part_x_ = 0;
 	float tail_part_y_ = 0;
@@ -43,10 +44,15 @@ private:
 	std::string output_folder_;
 	int save_counter_ = 0;
 
+	// тепловизионная камера ARKON
 	std::string gstreamer_pipeline_thermal_ = "gst-launch-1.0 v4l2src device=/dev/video0 ! \
 											 video/x-raw,format=YUY2 ! videoconvert ! appsink sync=false";
-	std::string gstreamer_pipeline_ = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\"\
-									  latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
+	// камера siyi-a8 mini
+	// std::string gstreamer_pipeline_ = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\"\
+	// 								  latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
+	// usb веб-камера A4Tech PK-333E 
+	std::string gstreamer_pipeline = "gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! \
+									  videorate ! video/x-raw,framerate=25/1 ! appsink sync=false";
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	void fix_thermal_camera_frame(cv::Mat& frame);
