@@ -6,6 +6,7 @@
 #include <sys/stat.h>
 #include <iomanip>
 #include <fstream>
+#include <unistd.h>
 #include "image_data.hpp"
 #include "frame_processor.hpp"
 #include "moves_estimator.hpp"
@@ -34,7 +35,7 @@ private:
 	//Для тепловизионной камеры ARKON 50
 	//Для тепловизионной камеры ARKON 38.5526 при повороте на 90 градусов
 	//Для веб-камеры A4Tech PK-333E 66
-	float camera_hfov_ = 66;
+	float camera_hfov_ = 38.5526;
 
 	float tail_part_x_ = 0;
 	float tail_part_y_ = 0;
@@ -53,6 +54,9 @@ private:
 	// usb веб-камера A4Tech PK-333E 
 	std::string gstreamer_pipeline_ = "gst-launch-1.0 v4l2src device=/dev/video0 ! videoconvert ! \
 									  videorate ! video/x-raw,framerate=25/1 ! appsink sync=false";
+
+	int fps = 25;
+	int time_for_cap = 1000000/fps;
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	void fix_thermal_camera_frame(cv::Mat& frame);

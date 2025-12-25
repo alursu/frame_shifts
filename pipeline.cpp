@@ -68,10 +68,6 @@ int Pipeline::process_video(bool use_thermal_camera)
 		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
 		}
-		std::ostringstream saving_path;
-		output_folder_ = create_output_folder();
-    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    	cv::imwrite(saving_path.str(), second);
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -94,6 +90,12 @@ int Pipeline::process_video(bool use_thermal_camera)
 	float pixels_per_radian_h = (second.cols + 10) / (camera_hfov_*M_PI / 180);
     float pixels_per_radian_v = (second.rows + 10) / (camera_vfov*M_PI / 180);
 
+	auto time_for_processing_first_cap = std::chrono::high_resolution_clock::now();
+	auto duration = std::chrono::duration_cast<std::chrono::microseconds>(time_for_processing_first_cap - previous_img_capture_time_);
+	if (duration.count() < time_for_cap){
+		usleep(time_for_cap - duration.count());
+	}
+
 	// Пока можем захватывать кадры - обработка
 	while (cap->grab())
 	{
@@ -113,9 +115,6 @@ int Pipeline::process_video(bool use_thermal_camera)
 		if (use_thermal_camera){
 			fix_thermal_camera_frame(second);
 		}
-		std::ostringstream saving_path;
-    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    	cv::imwrite(saving_path.str(), second);
 
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
@@ -146,6 +145,12 @@ int Pipeline::process_video(bool use_thermal_camera)
 		clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 
 		previous_img_capture_time_ = frame_grabbed_time;
+
+		auto time_for_processing_cap = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::microseconds>(time_for_processing_cap - previous_img_capture_time_);
+		if (duration.count() < time_for_cap){
+			usleep(time_for_cap - duration.count());
+		}
 	}
 
 	// Закрываем файлы и источник видео
