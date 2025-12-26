@@ -18,6 +18,6 @@ int main(int argc, char* argv[])
 	Pipeline stitch (threshold);
 
 	// Запуск пайплайна
-	stitch.process_video(true);
+	stitch.process_video();
  	return 0;
 }
