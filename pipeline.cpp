@@ -38,6 +38,9 @@ int Pipeline::process_video(bool use_thermal_camera)
 	autopilot_interface_quit_ = autopilot;
 	signal(SIGINT,quit_handler);
 
+	CameraInterface cam;
+	cam.base();
+
 	// Захват видео
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
 
