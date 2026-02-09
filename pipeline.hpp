@@ -15,6 +15,7 @@
 #include "optical_flow_lkt.hpp"
 #include "autopilot_interface.hpp"
 #include "uart_interface.hpp"
+#include "camera_interface.hpp"
 
 class Pipeline
 {

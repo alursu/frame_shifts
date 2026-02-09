@@ -38,6 +38,9 @@ int Pipeline::process_video()
 	autopilot_interface_quit_ = autopilot;
 	signal(SIGINT,quit_handler);
 
+	CameraInterface cam;
+	cam.base();
+
 	// Захват видео
 	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
 	// std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
