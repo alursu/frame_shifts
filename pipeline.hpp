@@ -2,6 +2,7 @@
 #define PIPELINE_H_
 
 #include <opencv2/opencv.hpp>
+#include <sys/stat.h>
 
 // #include <opencv2/imgproc/imgproc.hpp>
 // #include <opencv2/core/core.hpp>
@@ -33,11 +34,15 @@ protected:
 	std::vector<ImageData> matched_data_;
 	std::string outFile_;
 
+	std::string output_folder_;
+	int save_counter_ = 0;
+
 	clock_t previous_img_capture_time_ = 0;
 	//Для siyi-a8 mini
-	int camera_hfov_ = 81;
+	int camera_hfov_ = 48.3;
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
+	std::string create_output_folder();
 };
 
 #endif // PIPELINE_H_

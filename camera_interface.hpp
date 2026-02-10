@@ -28,7 +28,6 @@ class CameraInterface
 {
 public:
 
-    int base();
     void open();
     bool camera_connected();
     cv::Mat get_frame();
@@ -38,9 +37,6 @@ public:
 
 private:
 
-    // int serailCallBack(int id,guide_usb_serial_data_t *pSerialData);
-    // int connectStatusCallBack(int id,guide_usb_device_status_e deviceStatus);
-    // int frameCallBack(int id,guide_usb_frame_data_t *pVideoData);
 };
 
 #endif // CAMERA_INTERFACE_H_

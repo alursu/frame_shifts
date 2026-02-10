@@ -32,7 +32,7 @@ int Pipeline::process_video()
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
-	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
+	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyAMA0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
 	port_quit_ = port;
@@ -41,12 +41,6 @@ int Pipeline::process_video()
 
 	std::shared_ptr<CameraInterface> cam = std::make_shared<CameraInterface>();
 	cam->open();
-
-	// // Захват видео
-	// Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
-	// // std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
-	// // cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
-	// cap->open("../test1.avi");
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
 	if (!cam->is_opened_){ 
@@ -68,6 +62,11 @@ int Pipeline::process_video()
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
+
+		std::ostringstream saving_path;
+		output_folder_ = create_output_folder();
+    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	cv::imwrite(saving_path.str(), second);
 
 		// Обрезаем исходное изображение по шаблону (по 5 пикселей с каждой стороны).
 		// Т.к. наибольшие искажения наблюдаются в близи к краям изображения, то просто обрезаем их 
@@ -99,12 +98,13 @@ int Pipeline::process_video()
 		if (second.rows == 0 || second.cols == 0){
 			continue;
 		}
+		
+		std::ostringstream saving_path;
+    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	cv::imwrite(saving_path.str(), second);
 
 		second = Mat(second, cropRect);
 		// cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
-
-		// cv::imshow("frame", second);
-        // cv::waitKey(10);
 
 		// // Сравниваем соседние кадры
 		// auto result = frameProcessor_.MatchImages(first, firstInfo, second, secondInfo);
@@ -190,4 +190,18 @@ void quit_handler(int sig)
 	// Завершение программы
 	exit(0);
 
+}
+
+std::string Pipeline::create_output_folder() 
+{
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&time);
+
+    std::ostringstream oss;
+    oss << "/home/adm/work/frame_shifts/build/" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    std::string folder_name = oss.str();
+
+    mkdir(folder_name.c_str(), 0777);
+    return folder_name;
 }
