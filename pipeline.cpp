@@ -9,6 +9,7 @@ using namespace cv;
 // Глобальные переменные и вспомогательная функция для обработки прерывания
 std::shared_ptr<AutopilotInterface> autopilot_interface_quit_;
 std::shared_ptr<UartInterface> port_quit_;
+std::shared_ptr<CameraInterface> cam_quit_;
 void quit_handler( int sig );
 
 
@@ -38,19 +39,19 @@ int Pipeline::process_video()
 	autopilot_interface_quit_ = autopilot;
 	signal(SIGINT,quit_handler);
 
-	CameraInterface cam;
-	cam.base();
+	std::shared_ptr<CameraInterface> cam = std::make_shared<CameraInterface>();
+	cam->open();
 
-	// Захват видео
-	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
-	// std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
-	// cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
-	cap->open("../test1.avi");
+	// // Захват видео
+	// Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
+	// // std::string gstreamer_pipeline = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.25:8554/main.264\" latency=0 ! rtph264depay ! avdec_h264 ! videoconvert ! appsink sync=false";
+	// // cap->open(gstreamer_pipeline, cv::CAP_GSTREAMER);
+	// cap->open("../test1.avi");
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
-	if (!cap->isOpened()){ 
+	if (!cam->is_opened_){ 
 		std::cout << "Video source is not opened" << std::endl;
-		cap->release();
+		cam->close();
 		return -1;
 	}
 
@@ -58,12 +59,12 @@ int Pipeline::process_video()
 	autopilot->start();
 
 	// Если захватили кадр - начинаем обработку
-	if (cap->grab())
+	if (cam->camera_connected())
 	{
 		// Загружаем изображение. Загружаем в second, чтобы далее сравнивать соседние кадры
 		// Т.е. меняем second и first местами каждый раз, загружаем последующее изображение в 
 		// second
-		*cap >> second;
+		second = cam->get_frame();
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -73,7 +74,7 @@ int Pipeline::process_video()
 		second = Mat(second, cropRect);
 
 		// Переводим в градацию серого
-		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
+		// cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
 		// // Определяем ключевые точки изображения и соответствующие им дескрипторы
 		// secondInfo = frameProcessor_.GetKeypointData(second);
@@ -87,20 +88,23 @@ int Pipeline::process_video()
     float pixels_per_radian_v = second.rows / (camera_vfov*M_PI / 180);
 
 	// Пока можем захватывать кадры - обработка
-	while (cap->grab())
+	while (cam->camera_connected())
 	{
 		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
 		first = second.clone();
 		swap(firstInfo, secondInfo);
 		
-		*cap >> second;
+		second = cam->get_frame();
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
 			continue;
 		}
 
 		second = Mat(second, cropRect);
-		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
+		// cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
+
+		// cv::imshow("frame", second);
+        // cv::waitKey(10);
 
 		// // Сравниваем соседние кадры
 		// auto result = frameProcessor_.MatchImages(first, firstInfo, second, secondInfo);
@@ -121,7 +125,7 @@ int Pipeline::process_video()
 	// Закрываем файлы и источник видео
 	port->stop();
 	autopilot->stop();
-	cap->release();
+	cam->close();
 
 	return 0;
 }
@@ -175,6 +179,11 @@ void quit_handler(int sig)
 
 	try {
 		port_quit_->stop();
+	}
+	catch (int error){}
+
+		try {
+		cam_quit_->close();
 	}
 	catch (int error){}
 

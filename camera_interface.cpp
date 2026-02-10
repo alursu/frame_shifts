@@ -1,31 +1,13 @@
 #include "camera_interface.hpp"
 
-int serailCallBack(int id,guide_usb_serial_data_t *pSerialData);
+int serialCallBack(int id,guide_usb_serial_data_t *pSerialData);
 int connectStatusCallBack(int id,guide_usb_device_status_e deviceStatus);
 int frameCallBack(int id,guide_usb_frame_data_t *pVideoData);
 
-    int FPS1 = 0;
-    int FPS2 = 0;
-    double startTime1,startTime2;
+bool frame_in_buffer = false;
+cv::Mat frame;
 
-    // unsigned char ironred[12]  = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x02,0x03,0xF0};
-    // unsigned char whitehot[12] = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x00,0x01,0xF0};
-    // unsigned char hotiron[12]  = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x03,0x02,0xF0};
-    // unsigned char medical[12]  = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x04,0x05,0xF0};
-    // unsigned char arctic[12]   = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x05,0x04,0xF0};
-    // unsigned char rainbow1[12] = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x06,0x07,0xF0};
-    // unsigned char rainbow2[12] = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x07,0x06,0xF0};
-    // unsigned char tnit[12]     = { 0x55,0xAA,0x07,0x02,0x00,0x04,0x00,0x00,0x00,0x08,0x09,0xF0};
-    // unsigned char shutter[12]  = { 0x55,0xAA,0x07,0x02,0x01,0x08,0x00,0x00,0x00,0x01,0x0d,0xF0};
-
-double tick(void)
-{
-    struct timeval t;
-    gettimeofday(&t, 0);
-    return t.tv_sec + 1E-6 * t.tv_usec;
-}
-
-int CameraInterface::base(void)
+int CameraInterface::base()
 {
     guide_usb_setloglevel(LOG_LEVEL_INFO);//Setting a Log Level
 
@@ -40,7 +22,7 @@ int CameraInterface::base(void)
     }
     else
     {
-        ret = guide_usb_opencommandcontrol(1,(OnSerialDataReceivedCB)serailCallBack);//Endpoint communication is enabled on device 1
+        ret = guide_usb_opencommandcontrol(1,(OnSerialDataReceivedCB)serialCallBack);//Endpoint communication is enabled on device 1
         printf("Initial device 1 success:%d\n",ret);
     }
 
@@ -56,12 +38,14 @@ int CameraInterface::base(void)
     {
         printf("Open 1 return:%d\n",ret);
     }
-    startTime1 = tick();
 
     int count = 6000000;
     while (count--)
     {
-        usleep(10);
+        usleep(100);
+        // auto real_time = std::chrono::steady_clock::now();
+        // auto diff = std::chrono::duration_cast<std::chrono::milliseconds>(real_time - g_last_frame_time);
+        // std::cout << "Time diff: " << diff.count() << std::endl;
     }
 
     ret = guide_usb_closestream(1);
@@ -76,19 +60,77 @@ int CameraInterface::base(void)
     return ret;
 }
 
-int serailCallBack(int id,guide_usb_serial_data_t *pSerialData)
+void CameraInterface::open()
 {
-    switch (id)
+    guide_usb_setloglevel(LOG_LEVEL_ERROR);//Setting a Log Level
+
+    int ret = guide_usb_get_devcount();//Quantity of equipment acquired  Device ID No.: 1,2,3,4,...,count
+
+    while (ret < 1) {
+        usleep(500000);
+        ret = guide_usb_get_devcount();
+        std::clog << "No camera found, trying to reconnect...";
+    }
+    std::clog << "Camera counts: " << ret << std::endl;
+
+    ret = guide_usb_initial(1);//Initialize device 1
+    if(ret < 0)
     {
-      case 1:
-        //printf("ID:%d---->data length:%d \n",id,pSerialData->serial_recv_data_length);
-        break;
-      case 2:
-        //printf("ID:%d---->data length:%d \n",id,pSerialData->serial_recv_data_length);
-        break;
-      break;
+        std::clog << "Initial device 1 fail: " << ret << std::endl;
+    }
+    else
+    {
+        ret = guide_usb_opencommandcontrol(1,(OnSerialDataReceivedCB)serialCallBack);//Endpoint communication is enabled on device 1
+        std::clog << "Initial device 1 success: " << ret << std::endl;
     }
 
+    ret = guide_usb_openstream_auto(1,(OnFrameDataReceivedCB)frameCallBack,(OnDeviceConnectStatusCB)connectStatusCallBack); //Device 1 Starts the video streaming thread
+
+    if(ret < 0)
+    {
+        std::clog << "Open 1 fail: " << ret << std::endl;
+    }
+    else
+    {
+        std::clog << "Open 1 return: " << ret << std::endl;
+        is_opened_ = true;
+    }
+}
+
+bool CameraInterface::camera_connected()
+{
+    int count = 30000;
+    while (count--)
+    {
+        usleep(100);
+        if (frame_in_buffer){
+            frame_in_buffer = false;
+            return true;
+        }
+    }
+    close();
+    return false;
+}
+
+cv::Mat CameraInterface::get_frame()
+{
+    return frame;
+}
+
+void CameraInterface::close()
+{
+    int ret = guide_usb_closestream(1);
+    std::clog << "Close 1 return: " << ret << std::endl;
+
+    ret = guide_usb_closecommandcontrol(1);
+    std::clog << "Close command control 1 return: " << ret << std::endl;
+
+    ret = guide_usb_exit(1);
+    std::clog << "Exit 1 return: " << ret << std::endl;
+}
+
+int serialCallBack(int id,guide_usb_serial_data_t *pSerialData)
+{
     return 0;
 }
 
@@ -123,64 +165,41 @@ int connectStatusCallBack(int id,guide_usb_device_status_e deviceStatus)
     return 0;
 }
 
-
-
 int frameCallBack(int id,guide_usb_frame_data_t *pVideoData)
 {
     switch (id)
     {
-      case 1: //设备1
-        if(pVideoData->frame_src_data != NULL)
-        {
-            printf("pVideoData->frame_src_data[0]:%d\n",pVideoData->frame_src_data[0]);
-            printf("pVideoData->frame_src_data[1]:%d\n",pVideoData->frame_src_data[1]);
-            // std::cout << std::endl << "pVideoData->frame_yuv_data_length: " << pVideoData->frame_yuv_data_length << std::endl << std::endl;
-            // std::cout << std::endl << "pVideoData->frame_yuv_data[0]: " << pVideoData->frame_yuv_data[0] << std::endl << std::endl;
-            // cv::Mat yuv16bit(512, 640, CV_16UC1, pVideoData->frame_yuv_data);
-            // cv::imshow("frame", yuv16bit);
-            // cv::waitKey(10);
-        }
-        if(pVideoData->paramLine != NULL)
-        {
-            printf("pVideoData->paramLine[0]:%d\n",pVideoData->paramLine[0]);
-            printf("pVideoData->paramLine[1]:%d\n",pVideoData->paramLine[1]);
-            // std::cout << std::endl << "pVideoData->frame_yuv_data_length: " << pVideoData->frame_yuv_data_length << std::endl << std::endl;
-            // std::cout << std::endl << "pVideoData->frame_yuv_data[0]: " << pVideoData->frame_yuv_data[0] << std::endl << std::endl;
-            // cv::Mat yuv16bit(512, 640, CV_16UC1, pVideoData->frame_yuv_data);
-            // cv::imshow("frame", yuv16bit);
-            // cv::waitKey(10);
-        }
-
+      case 1:
         if(pVideoData->frame_yuv_data != NULL)
         {
-            printf("pVideoData->frame_yuv_data[0]:%x\n",pVideoData->frame_yuv_data[0]);
-            printf("pVideoData->frame_yuv_data[1]:%x\n",pVideoData->frame_yuv_data[1]);
-            std::cout << std::endl << "pVideoData->frame_yuv_data_length: " << pVideoData->frame_yuv_data_length << std::endl << std::endl;
-            std::cout << std::endl << "pVideoData->frame_yuv_data[0]: " << pVideoData->frame_yuv_data[0] << std::endl << std::endl;
             cv::Mat yuv16bit(512, 640, CV_16UC1, pVideoData->frame_yuv_data);
-            cv::imshow("frame", yuv16bit);
+
+            cv::Mat yuv422(512, 640, CV_8UC2, pVideoData->frame_yuv_data);
+
+            cv::Mat bgr;
+            cv::cvtColor(yuv422, bgr, cv::COLOR_YUV2BGR_UYVY);
+            cv::cvtColor(bgr,bgr,cv::COLOR_BGR2GRAY);
+            std::cout << "bgr type: " << bgr.type() << std::endl;
+
+            // 2. Конвертируем YUV422 → BGR
+            cv::Mat frame_8;
+            cv::cvtColor(yuv422, frame_8, cv::COLOR_YUV2BGR_UYVY);
+
+            cv::normalize(yuv16bit, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            std::cout << "frame_8 type: " << frame_8.type() << std::endl;
+            std::cout << "frame cout: " << frame.type() << std::endl;
+
+            frame_in_buffer = true;
+            cv::imshow("8_preobr", bgr);
+            cv::waitKey(10);
+            // cv::imshow("16_1", yuv16bit);
+            // cv::waitKey(10);
+            // cv::imshow("8_preobr", frame_8);
+            // cv::waitKey(10);
+            cv::imshow("16_preobr", frame);
             cv::waitKey(10);
         }
-
-        FPS1++;
-        if((tick()-startTime1)>1)
-        {
-            startTime1 = tick();
-            printf("FPS1-------------------------%d\n",FPS1);
-            FPS1 = 0;
-        }
         break;
-      case 2:
-        FPS2++;
-        if((tick()-startTime2)>1)
-        {
-            startTime2 = tick();
-            printf("FPS2-------------------------%d\n",FPS2);
-            FPS2 = 0;
-        }
-        break;
-      case 3:
-      break;
      default:
         break;
     }
