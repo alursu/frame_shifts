@@ -1,7 +1,13 @@
 #include "optical_flow_lkt.hpp"
 
-cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image, 
-                                             bool rev_flow) {
+OpticalFlowLkt::OpticalFlowLkt()
+{
+    output_folder_ = create_output_folder();
+}
+
+cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool include_augmented_image,
+                                             bool rev_flow)
+{
 
     if (curr_image.empty()) {
         return cv::Point2f(0,0);
@@ -120,18 +126,14 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat& curr_image, bool inc
     flow_x *= 2.0;
     flow_y *= 2.0;
 
-    if (include_augmented_image)
-        get_augmented_image(curr_image, good_new, good_old);
+    vizualize_result(curr_image, good_new, good_old);
     
     return cv::Point2f(flow_x,flow_y);
 }
 
-
-// Метод для отрисовки направлений смещения особых точек - пока не сохраняем 
-// это изображение в отдельный файл и не отображаем
-void OpticalFlowLkt::get_augmented_image(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
-                                         std::vector<cv::Point2f> good_old){
-
+void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
+                                         std::vector<cv::Point2f> good_old)
+{
     cv::Mat augmented_image = curr_image.clone();
 
     double scale_factor = 2.0;
@@ -160,10 +162,35 @@ void OpticalFlowLkt::get_augmented_image(const cv::Mat& curr_image, std::vector<
 
         if (ia >= 0 && ia < w_orig && ib >= 0 && ib < h_orig &&
             ic >= 0 && ic < w_orig && id >= 0 && id < h_orig) {
-            cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
-            cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
+            cv::arrowedLine(augmented_image, cv::Point(ia, ib), cv::Point( ic, id), cv::Scalar(0), 1, 8, 0, 1);
+            // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
+            // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
         }
     }
 
+    // Раскомментировать для демонстрации работы во время работы программы
+    // P.S.: Всплывающие окна закрывать нажатием любой клавиши
+    // cv::imshow("Lucas-Kanade result",augmented_image);
+    // cv::waitKey(0);
+
+    // Раскомментировать для сохранения результатов в папку result
+    std::stringstream result_image_name;
+    result_image_name << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << iter_++ << ".jpg";
+    cv::imwrite(result_image_name.str(), augmented_image);
+
     return;
+}
+
+std::string OpticalFlowLkt::create_output_folder() 
+{
+    auto now = std::chrono::system_clock::now();
+    auto time = std::chrono::system_clock::to_time_t(now);
+    std::tm tm = *std::localtime(&time);
+    
+    std::ostringstream oss;
+    oss << "/home/adm/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    std::string folder_name = oss.str();
+    
+    mkdir(folder_name.c_str(), 0777);
+    return folder_name;
 }

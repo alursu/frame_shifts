@@ -3,6 +3,7 @@
 
 #include <opencv2/opencv.hpp>
 #include <sys/stat.h>
+#include <chrono>
 
 // #include <opencv2/imgproc/imgproc.hpp>
 // #include <opencv2/core/core.hpp>
@@ -37,7 +38,9 @@ protected:
 	std::string output_folder_;
 	int save_counter_ = 0;
 
-	clock_t previous_img_capture_time_ = 0;
+	// clock_t previous_img_capture_time_ = 0;
+	std::chrono::_V2::system_clock::time_point previous_img_capture_time_;
+	
 	//Для siyi-a8 mini
 	int camera_hfov_ = 48.3;
 

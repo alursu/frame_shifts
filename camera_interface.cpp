@@ -119,8 +119,10 @@ int frameCallBack(int id,guide_usb_frame_data_t *pVideoData)
       case 1:
         if(pVideoData->frame_yuv_data != NULL)
         {
-            cv::Mat yuv16bit(512, 640, CV_16UC1, pVideoData->frame_yuv_data);
-            cv::normalize(yuv16bit, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            // cv::Mat yuv16bit(512, 640, CV_16UC1, pVideoData->frame_yuv_data);
+            // cv::normalize(yuv16bit, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+            cv::Mat yuv422(512, 640, CV_8UC2, pVideoData->frame_yuv_data);
+            cv::cvtColor(yuv422, frame, cv::COLOR_YUV2BGR_UYVY);
             frame_in_buffer = true;
         }
         break;

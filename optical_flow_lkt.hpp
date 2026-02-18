@@ -3,11 +3,14 @@
 
 #include <opencv2/opencv.hpp>
 #include <ctime>
+#include <fstream>
+#include <sys/stat.h>
 
 class OpticalFlowLkt
 {
 public:
 
+    OpticalFlowLkt();
 	cv::Point2f get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image = false,
                                  bool rev_flow = false);
 
@@ -27,7 +30,11 @@ private:
     int max_level_ = 2;
     cv::TermCriteria criteria_ = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
 
-    void get_augmented_image(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
+    int iter_ = 0;
+    std::string output_folder_;
+
+    std::string create_output_folder();
+    void vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
                              std::vector<cv::Point2f> good_old);
 };
 

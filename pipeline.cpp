@@ -59,21 +59,22 @@ int Pipeline::process_video()
 		// Т.е. меняем second и first местами каждый раз, загружаем последующее изображение в 
 		// second
 		second = cam->get_frame();
+		previous_img_capture_time_ = std::chrono::high_resolution_clock::now();
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
 
-		std::ostringstream saving_path;
-		output_folder_ = create_output_folder();
-    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    	cv::imwrite(saving_path.str(), second);
+		// std::ostringstream saving_path;
+		// output_folder_ = create_output_folder();
+    	// saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	// cv::imwrite(saving_path.str(), second);
 
 		// Обрезаем исходное изображение по шаблону (по 5 пикселей с каждой стороны).
 		// Т.к. наибольшие искажения наблюдаются в близи к краям изображения, то просто обрезаем их 
 		second = Mat(second, cropRect);
 
 		// Переводим в градацию серого
-		// cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
+		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
 		// // Определяем ключевые точки изображения и соответствующие им дескрипторы
 		// secondInfo = frameProcessor_.GetKeypointData(second);
@@ -81,30 +82,35 @@ int Pipeline::process_video()
 		shift = opticalflow.get_optical_flow(second);
 	}
 
-	int camera_vfov = calculate_vertical_fov(camera_hfov_, second.cols, second.rows);
+	int camera_vfov = calculate_vertical_fov(camera_hfov_, second.cols + 10, second.rows + 10);
 
-	float pixels_per_radian_h = second.cols / (camera_hfov_*M_PI / 180);
-    float pixels_per_radian_v = second.rows / (camera_vfov*M_PI / 180);
+	float pixels_per_radian_h = (second.cols + 10) / (camera_hfov_*M_PI / 180);
+    float pixels_per_radian_v = (second.rows + 10) / (camera_vfov*M_PI / 180);
 
 	// Пока можем захватывать кадры - обработка
 	while (cam->camera_connected())
 	{
-		clock_t start = 1000*clock()/CLOCKS_PER_SEC;
+		// clock_t start = 1000*clock()/CLOCKS_PER_SEC;
 		first = second.clone();
 		swap(firstInfo, secondInfo);
 		
 		second = cam->get_frame();
+
+		auto frame_grabbed_time = std::chrono::high_resolution_clock::now();
+		auto time_diff_btwn_capturing_imgs = std::chrono::duration_cast<std::chrono::microseconds>(frame_grabbed_time - previous_img_capture_time_);
+		float diff_btwn_capturing_imgs_sec = time_diff_btwn_capturing_imgs.count()/1000000.0;
+
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
 			continue;
 		}
 		
-		std::ostringstream saving_path;
-    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    	cv::imwrite(saving_path.str(), second);
+		// std::ostringstream saving_path;
+    	// saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	// cv::imwrite(saving_path.str(), second);
 
 		second = Mat(second, cropRect);
-		// cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
+		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
 		// // Сравниваем соседние кадры
 		// auto result = frameProcessor_.MatchImages(first, firstInfo, second, secondInfo);
@@ -114,10 +120,12 @@ int Pipeline::process_video()
 
 		shift = opticalflow.get_optical_flow(second);
 
-		float flow_rate_x = shift.x / (pixels_per_radian_h * (start - previous_img_capture_time_));
-		float flow_rate_y = shift.y / (pixels_per_radian_v * (start - previous_img_capture_time_));
+		float flow_rate_x = shift.x / (pixels_per_radian_h * diff_btwn_capturing_imgs_sec);
+		float flow_rate_y = shift.y / (pixels_per_radian_v * diff_btwn_capturing_imgs_sec);
 
 		autopilot->write_optical_flow(shift.x, shift.y, flow_rate_x, flow_rate_y);
+
+		previous_img_capture_time_ = frame_grabbed_time;
 
 		std::cout << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 	}
@@ -147,7 +155,7 @@ float Pipeline::calculate_vertical_fov(float hfov_deg, int width, int height) {
 
     try {
         float hfov_rad = hfov_deg * M_PI / 180;
-        float aspect_ratio = height / width;
+        float aspect_ratio = (float)height / width;
 
         float vfov_rad = 2 * std::atan(std::tan(hfov_rad / 2) * aspect_ratio);
         float vfov_deg = vfov_rad * 180 / M_PI;
