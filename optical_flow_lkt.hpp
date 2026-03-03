@@ -11,13 +11,14 @@ class OpticalFlowLkt
 public:
 
     OpticalFlowLkt();
+    ~OpticalFlowLkt();
 	cv::Point2f get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image = false,
                                  bool rev_flow = false);
 
 private:
     
     cv::Mat prev_image_;
-	double crop_factor_ = 0.6;
+	double crop_factor_ = 0.8;
 
 	// Параметры обнаружения углов Ши-Томаса
     int max_corners_ = 50;
@@ -32,6 +33,7 @@ private:
 
     int iter_ = 0;
     std::string output_folder_;
+    std::ofstream out;
 
     std::string create_output_folder();
     void vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,

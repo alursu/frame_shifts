@@ -3,6 +3,12 @@
 OpticalFlowLkt::OpticalFlowLkt()
 {
     output_folder_ = create_output_folder();
+    out.open("/home/teleskret/work/frame_shifts/build/error_out.txt");
+}
+
+OpticalFlowLkt::~OpticalFlowLkt()
+{
+    out.close();
 }
 
 cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool include_augmented_image,
@@ -88,8 +94,11 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool inc
             good_new.push_back(corners1[i]);
             good_old.push_back(corners0[i]);
             good_errors.push_back(err[i]);
+            out << err[i] << " ";
         }
+        // out << std::endl;
     }
+    out << std::endl;
 
     if (good_new.empty()) {
         return cv::Point2f(0,0);
@@ -188,7 +197,7 @@ std::string OpticalFlowLkt::create_output_folder()
     std::tm tm = *std::localtime(&time);
     
     std::ostringstream oss;
-    oss << "/home/adm/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    oss << "/home/teleskret/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string folder_name = oss.str();
     
     mkdir(folder_name.c_str(), 0777);

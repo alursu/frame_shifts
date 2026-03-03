@@ -1,5 +1,12 @@
 #include "camera_interface.hpp"
 
+unsigned char close_shutter[12] = {0x55,0xAA,0x07,0xA0,0x02,0x08,0x00,0x00,0x00,0x00,0xAD,0xF0};
+unsigned char open_shutter[12] = {0x55,0xAA,0x07,0xA0,0x02,0x08,0x00,0x00,0x00,0x01,0xAC,0xF0};
+unsigned char adaptive_compensation[12] = {0x55,0xAA,0x07,0x01,0x00,0x07,0x00,0x00,0x00,0x01,0x00,0xF0};
+unsigned char stop_adaptive_compensation[12] = {0x55,0xAA,0x07,0x01,0x00,0x07,0x00,0x00,0x00,0x00,0x01,0xF0};
+unsigned char shutter_timer[12]  = {0x55,0xAA,0x07,0x01,0x00,0x01,0x00,0x00,0x00,0x02,0x05,0xF0};
+unsigned char save_settings[12] = {0x55,0xAA,0x07,0x01,0x00,0x04,0x00,0x00,0x00,0x01,0x03,0xF0};
+
 int serialCallBack(int id,guide_usb_serial_data_t *pSerialData);
 int connectStatusCallBack(int id,guide_usb_device_status_e deviceStatus);
 int frameCallBack(int id,guide_usb_frame_data_t *pVideoData);
@@ -31,8 +38,26 @@ void CameraInterface::open()
         std::clog << "Initial device 1 success: " << ret << std::endl;
     }
 
-    ret = guide_usb_openstream_auto(1,(OnFrameDataReceivedCB)frameCallBack,(OnDeviceConnectStatusCB)connectStatusCallBack); //Device 1 Starts the video streaming thread
+    ret = guide_usb_sendcommand(1, adaptive_compensation, 12);
+    if (ret < 0){
+        std::clog << "Stop adaptive compensation failed" << std::endl;
+    } else {
+        std::clog << "Stop adaptive compensation successed" << std::endl;
+    }
+    ret = guide_usb_sendcommand(1, shutter_timer, 12);
+    if (ret < 0){
+        std::clog << "Setting shutter close timer failed" << std::endl;
+    } else {
+        std::clog << "Setting shutter close timer successed" << std::endl;
+    }
+    ret = guide_usb_sendcommand(1, save_settings, 12);
+    if (ret < 0){
+        std::clog << "Saving settings failed" << std::endl;
+    } else {
+        std::clog << "Saving settings successed" << std::endl;
+    }
 
+    ret = guide_usb_openstream_auto(1,(OnFrameDataReceivedCB)frameCallBack,(OnDeviceConnectStatusCB)connectStatusCallBack); //Device 1 Starts the video streaming thread
     if(ret < 0)
     {
         std::clog << "Open 1 fail: " << ret << std::endl;
@@ -74,6 +99,28 @@ void CameraInterface::close()
 
     ret = guide_usb_exit(1);
     std::clog << "Exit 1 return: " << ret << std::endl;
+}
+
+void CameraInterface::shutter_close()
+{
+    int ret = guide_usb_sendcommand(1, close_shutter, 12);
+    if (ret < 0){
+        std::clog << "Close shutter failed" << std::endl;
+    } else {
+        std::clog << "Close shutter successed" << std::endl;
+    }
+    shutter_is_closed = true;
+}
+
+void CameraInterface::shutter_open()
+{
+    int ret = guide_usb_sendcommand(1, open_shutter, 12);
+    if (ret < 0){
+        std::clog << "Open shutter failed" << std::endl;
+    } else {
+        std::clog << "Open shutter successed" << std::endl;
+    }
+    shutter_is_closed = false;
 }
 
 int serialCallBack(int id,guide_usb_serial_data_t *pSerialData)

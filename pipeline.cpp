@@ -32,7 +32,7 @@ int Pipeline::process_video()
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
-	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyAMA0", 115200);
+	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
 	port_quit_ = port;
@@ -52,6 +52,8 @@ int Pipeline::process_video()
 	port->start();
 	autopilot->start();
 
+	ofstream out;
+	out.open("/home/teleskret/work/frame_shifts/build/time_for_frame.txt");
 	// Если захватили кадр - начинаем обработку
 	if (cam->camera_connected())
 	{
@@ -87,6 +89,8 @@ int Pipeline::process_video()
 	float pixels_per_radian_h = (second.cols + 10) / (camera_hfov_*M_PI / 180);
     float pixels_per_radian_v = (second.rows + 10) / (camera_vfov*M_PI / 180);
 
+	int iter = 1;
+
 	// Пока можем захватывать кадры - обработка
 	while (cam->camera_connected())
 	{
@@ -95,11 +99,25 @@ int Pipeline::process_video()
 		swap(firstInfo, secondInfo);
 		
 		second = cam->get_frame();
+		// frame_iter++;
+		// if (frame_iter == 1500 || cam->shutter_is_closed){	
+		// 	frame_iter = 0;
+		// 	cam->shutter_close();
+		// 	static int shutter_frames_iter = 0;
+		// 	if (shutter_frames_iter == 20){
+		// 		shutter_frames_iter = 0;
+		// 		cam->shutter_open();
+		// 	}
+		// 	shutter_frames_iter++;
+		// 	std::cout << "shutter_frames_iter: " << shutter_frames_iter << std::endl;
+		// }
 
 		auto frame_grabbed_time = std::chrono::high_resolution_clock::now();
 		auto time_diff_btwn_capturing_imgs = std::chrono::duration_cast<std::chrono::microseconds>(frame_grabbed_time - previous_img_capture_time_);
 		float diff_btwn_capturing_imgs_sec = time_diff_btwn_capturing_imgs.count()/1000000.0;
-
+		// out << "Frame " << iter << ": " << time_diff_btwn_capturing_imgs.count()/1000.0 << std::endl;
+		std::clog << "Frame " << iter << ": " << time_diff_btwn_capturing_imgs.count()/1000.0 << std::endl;
+		iter++;
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
 			continue;
@@ -127,13 +145,17 @@ int Pipeline::process_video()
 
 		previous_img_capture_time_ = frame_grabbed_time;
 
-		std::cout << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
+		cv::imshow("video", second);
+		cv::waitKey(10);
+
+		// std::cout << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 	}
 
 	// Закрываем файлы и источник видео
 	port->stop();
 	autopilot->stop();
 	cam->close();
+	out.close();
 
 	return 0;
 }
@@ -207,7 +229,7 @@ std::string Pipeline::create_output_folder()
     std::tm tm = *std::localtime(&time);
 
     std::ostringstream oss;
-    oss << "/home/adm/work/frame_shifts/build/" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    oss << "/home/teleskret/work/frame_shifts/build/" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string folder_name = oss.str();
 
     mkdir(folder_name.c_str(), 0777);
