@@ -18,7 +18,7 @@ public:
 private:
     
     cv::Mat prev_image_;
-	double crop_factor_ = 0.6;
+	double crop_factor_ = 0.8;
 
 	// Параметры обнаружения углов Ши-Томаса
     int max_corners_ = 50;
