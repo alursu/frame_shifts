@@ -5,6 +5,7 @@
 #include <ctime>
 #include <fstream>
 #include <sys/stat.h>
+#include <fstream>
 
 class OpticalFlowLkt
 {
@@ -12,13 +13,12 @@ public:
 
     OpticalFlowLkt();
     ~OpticalFlowLkt();
-	cv::Point2f get_optical_flow(const cv::Mat& curr_image, bool include_augmented_image = false,
-                                 bool rev_flow = false);
+	cv::Point2f get_optical_flow(const cv::Mat& curr_image, bool rev_flow = false);
 
 private:
     
     cv::Mat prev_image_;
-	double crop_factor_ = 0.8;
+	double crop_factor_ = 0.6;
 
 	// Параметры обнаружения углов Ши-Томаса
     int max_corners_ = 50;
@@ -31,13 +31,20 @@ private:
     int max_level_ = 2;
     cv::TermCriteria criteria_ = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
 
+    int iter_frames_for_forecast_ = 0;
+    bool calib_stopped = false;
+    std::array<cv::Point2f, 25> forecast_displacements{};
+    bool were_identic = false;
+
     int iter_ = 0;
     std::string output_folder_;
-    std::ofstream out;
 
     std::string create_output_folder();
     void vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
                              std::vector<cv::Point2f> good_old);
+    void displacement_forecast(float flow_x, float flow_y);
+    void save_image(const cv::Mat& img);
+    cv::Point2f processing_calib_imgs (const cv::Mat &img);
 };
 
 #endif // OPTICAL_FLOW_H_

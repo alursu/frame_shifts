@@ -21,9 +21,9 @@ void CameraInterface::open()
     int ret = guide_usb_get_devcount();//Quantity of equipment acquired  Device ID No.: 1,2,3,4,...,count
 
     while (ret < 1) {
-        usleep(500000);
+        usleep(1000000);
         ret = guide_usb_get_devcount();
-        std::clog << "No camera found, trying to reconnect...";
+        std::clog << "No camera found, trying to reconnect..." << std::endl;
     }
     std::clog << "Camera counts: " << ret << std::endl;
 
@@ -40,15 +40,9 @@ void CameraInterface::open()
 
     ret = guide_usb_sendcommand(1, adaptive_compensation, 12);
     if (ret < 0){
-        std::clog << "Stop adaptive compensation failed" << std::endl;
+        std::clog << "Start adaptive compensation failed" << std::endl;
     } else {
-        std::clog << "Stop adaptive compensation successed" << std::endl;
-    }
-    ret = guide_usb_sendcommand(1, shutter_timer, 12);
-    if (ret < 0){
-        std::clog << "Setting shutter close timer failed" << std::endl;
-    } else {
-        std::clog << "Setting shutter close timer successed" << std::endl;
+        std::clog << "Start adaptive compensation successed" << std::endl;
     }
     ret = guide_usb_sendcommand(1, save_settings, 12);
     if (ret < 0){
@@ -101,28 +95,6 @@ void CameraInterface::close()
     std::clog << "Exit 1 return: " << ret << std::endl;
 }
 
-void CameraInterface::shutter_close()
-{
-    int ret = guide_usb_sendcommand(1, close_shutter, 12);
-    if (ret < 0){
-        std::clog << "Close shutter failed" << std::endl;
-    } else {
-        std::clog << "Close shutter successed" << std::endl;
-    }
-    shutter_is_closed = true;
-}
-
-void CameraInterface::shutter_open()
-{
-    int ret = guide_usb_sendcommand(1, open_shutter, 12);
-    if (ret < 0){
-        std::clog << "Open shutter failed" << std::endl;
-    } else {
-        std::clog << "Open shutter successed" << std::endl;
-    }
-    shutter_is_closed = false;
-}
-
 int serialCallBack(int id,guide_usb_serial_data_t *pSerialData)
 {
     return 0;
@@ -166,8 +138,6 @@ int frameCallBack(int id,guide_usb_frame_data_t *pVideoData)
       case 1:
         if(pVideoData->frame_yuv_data != NULL)
         {
-            // cv::Mat yuv16bit(512, 640, CV_16UC1, pVideoData->frame_yuv_data);
-            // cv::normalize(yuv16bit, frame, 0, 255, cv::NORM_MINMAX, CV_8UC1);
             cv::Mat yuv422(512, 640, CV_8UC2, pVideoData->frame_yuv_data);
             cv::cvtColor(yuv422, frame, cv::COLOR_YUV2BGR_UYVY);
             frame_in_buffer = true;

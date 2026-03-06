@@ -3,18 +3,14 @@
 OpticalFlowLkt::OpticalFlowLkt()
 {
     output_folder_ = create_output_folder();
-    out.open("/home/teleskret/work/frame_shifts/build/error_out.txt");
 }
 
 OpticalFlowLkt::~OpticalFlowLkt()
 {
-    out.close();
 }
 
-cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool include_augmented_image,
-                                             bool rev_flow)
-{
-
+cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool rev_flow)
+{    
     if (curr_image.empty()) {
         return cv::Point2f(0,0);
          //что-то нужно с этим сделать, как-то обработать
@@ -42,6 +38,23 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool inc
         // надо обработать
     }
 
+    iter_frames_for_forecast_++;
+    if (iter_frames_for_forecast_ == 26)
+        iter_frames_for_forecast_ = 1;
+
+    bool is_identic = !cv::norm(prev_image_, curr_image_grey);
+    if (is_identic){
+        if (!were_identic){
+            std::clog << "Calibration started" << std::endl;
+        }
+        were_identic = is_identic;
+        return processing_calib_imgs(curr_image);
+    } else if(were_identic){
+        std::clog << "Calibration stopped" << std::endl;
+        calib_stopped = true;
+    }
+    were_identic = is_identic;
+
     std::vector<cv::Point2f> corners0;
 
     cv::goodFeaturesToTrack(prev_image_, corners0, max_corners_, quality_level_, 
@@ -49,6 +62,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool inc
 
     if (corners0.empty()) {
         prev_image_ = curr_image_grey.clone();
+        save_image(curr_image);
         return cv::Point2f(0,0);
         // надо обработать
     }
@@ -94,13 +108,11 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool inc
             good_new.push_back(corners1[i]);
             good_old.push_back(corners0[i]);
             good_errors.push_back(err[i]);
-            out << err[i] << " ";
         }
-        // out << std::endl;
     }
-    out << std::endl;
 
     if (good_new.empty()) {
+        save_image(curr_image);
         return cv::Point2f(0,0);
         // надо обработать
     }
@@ -136,6 +148,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool inc
     flow_y *= 2.0;
 
     vizualize_result(curr_image, good_new, good_old);
+    displacement_forecast(flow_x, flow_y);
     
     return cv::Point2f(flow_x,flow_y);
 }
@@ -143,7 +156,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool inc
 void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,
                                          std::vector<cv::Point2f> good_old)
 {
-    cv::Mat augmented_image = curr_image.clone();
+    cv::Mat arrowed_image = curr_image.clone();
 
     double scale_factor = 2.0;
     int h_orig = curr_image.rows;
@@ -171,7 +184,7 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
 
         if (ia >= 0 && ia < w_orig && ib >= 0 && ib < h_orig &&
             ic >= 0 && ic < w_orig && id >= 0 && id < h_orig) {
-            cv::arrowedLine(augmented_image, cv::Point(ia, ib), cv::Point( ic, id), cv::Scalar(0), 1, 8, 0, 1);
+            cv::arrowedLine(arrowed_image, cv::Point(ia, ib), cv::Point( ic, id), cv::Scalar(0), 1, 8, 0, 1);
             // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
             // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
         }
@@ -183,11 +196,52 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
     // cv::waitKey(0);
 
     // Раскомментировать для сохранения результатов в папку result
-    std::stringstream result_image_name;
-    result_image_name << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << iter_++ << ".jpg";
-    cv::imwrite(result_image_name.str(), augmented_image);
+    save_image(arrowed_image);
 
     return;
+}
+
+void OpticalFlowLkt::displacement_forecast(float flow_x, float flow_y)
+{
+    if (calib_stopped){
+        forecast_displacements = {};
+        calib_stopped = false;
+    }
+    double alpha = 0.6;
+    forecast_displacements[iter_frames_for_forecast_ - 1].x = alpha*flow_x + (1-alpha)*forecast_displacements[iter_frames_for_forecast_ - 1].x;
+    forecast_displacements[iter_frames_for_forecast_ - 1].y = alpha*flow_y + (1-alpha)*forecast_displacements[iter_frames_for_forecast_ - 1].y;
+    return;
+}
+
+void OpticalFlowLkt::save_image(const cv::Mat &img)
+{
+    std::stringstream result_image_name;
+    result_image_name << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << iter_++ << ".jpg";
+    cv::imwrite(result_image_name.str(), img);
+    return;
+}
+
+cv::Point2f OpticalFlowLkt::processing_calib_imgs(const cv::Mat &img)
+{
+    float flow_x = forecast_displacements[iter_frames_for_forecast_].x;
+    float flow_y = forecast_displacements[iter_frames_for_forecast_].y;
+    
+    cv::Mat img_for_savig = img.clone();
+    int width = img_for_savig.cols;
+    int height = img_for_savig.rows;
+    int a = width / 2;
+    int b = height / 2;
+    int c = a + flow_x;
+    int d = b + flow_y;
+    if (c >= 0 && c < width && d >= 0 && d < height) {
+            cv::arrowedLine(img_for_savig, cv::Point(a, b), cv::Point(c, d), cv::Scalar(0), 1, 8, 0, 1);
+            // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
+            // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
+    }
+    save_image(img_for_savig);
+
+    displacement_forecast(flow_x, flow_y);
+    return cv::Point2f(flow_x, flow_y);
 }
 
 std::string OpticalFlowLkt::create_output_folder() 

@@ -32,11 +32,8 @@ public:
     bool camera_connected();
     cv::Mat get_frame();
     void close();
-    void shutter_close();
-    void shutter_open();
 
     bool is_opened_ = false;
-    bool shutter_is_closed = false;
 
 private:
 

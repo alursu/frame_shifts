@@ -4,7 +4,6 @@
 #include <opencv2/opencv.hpp>
 #include <sys/stat.h>
 #include <chrono>
-#include <fstream>
 
 // #include <opencv2/imgproc/imgproc.hpp>
 // #include <opencv2/core/core.hpp>
@@ -44,8 +43,6 @@ protected:
 	
 	//Для siyi-a8 mini
 	int camera_hfov_ = 48.3;
-
-	int frame_iter = 1;
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	std::string create_output_folder();
