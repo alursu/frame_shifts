@@ -31,13 +31,19 @@ private:
     int max_level_ = 2;
     cv::TermCriteria criteria_ = cv::TermCriteria(cv::TermCriteria::EPS || cv::TermCriteria::COUNT, 20, 0.03);
 
+    // Параметры для прогнозирования смещений в моменты работы адаптивной коррекции
     int iter_frames_for_forecast_ = 0;
     bool calib_stopped = false;
     std::array<cv::Point2f, 25> forecast_displacements{};
     bool were_identic = false;
 
+    // Параметры для сохранения изображений с результатами работы алгоритма
     int iter_ = 0;
     std::string output_folder_;
+
+    // Параметры для фильтрации сопоставлений
+    int max_count_of_comparisons_ = 20;
+    int error_threshold_ = 30;
 
     std::string create_output_folder();
     void vizualize_result(const cv::Mat& curr_image, std::vector<cv::Point2f> good_new,

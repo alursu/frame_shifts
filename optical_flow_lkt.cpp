@@ -103,11 +103,25 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool rev
     std::vector<cv::Point2f> good_new;
     std::vector<cv::Point2f> good_old;
     std::vector<float> good_errors;
-    for (size_t i = 0; i < st.size(); ++i) {
-        if (st[i]) {
+    for (size_t i = 0; i < st.size(); ++i) {    
+        if (st[i] && err[i] < error_threshold_) {
             good_new.push_back(corners1[i]);
             good_old.push_back(corners0[i]);
             good_errors.push_back(err[i]);
+        }
+    }
+
+    if (good_errors.size() > max_count_of_comparisons_){
+        std::vector<float> errors_for_sort = good_errors;
+        std::sort(errors_for_sort.begin(),errors_for_sort.end());
+        float threshold = errors_for_sort.at(max_count_of_comparisons_ - 1);
+        
+        for (int i = good_errors.size() - 1; i >= 0; i--){
+            if (good_errors[i] > threshold){
+                good_new.erase(good_new.begin() + i);
+                good_old.erase(good_old.begin() + i);
+                good_errors.erase(good_errors.begin() + i);
+            }
         }
     }
 
