@@ -118,14 +118,24 @@ int Pipeline::process_video()
 
 		shift = opticalflow.get_optical_flow(second);
 
+		tail_part_x_+= (shift.x - (int)shift.x);
+		tail_part_y_+= (shift.y - (int)shift.y);
+		if (abs(tail_part_x_) > tail_part_to_use_){
+			shift.x+=(tail_part_x_ > 0) ? 1 : -1;
+			tail_part_x_+=(tail_part_x_ > 0) ? -tail_part_to_use_ : tail_part_to_use_;
+		}
+		if(abs(tail_part_y_) > tail_part_to_use_){
+			shift.y+=(tail_part_y_ > 0) ? 1 : -1;
+			tail_part_y_+=(tail_part_y_ > 0) ? -tail_part_to_use_ : tail_part_to_use_;
+		}
+
 		float flow_rate_x = shift.x / (pixels_per_radian_h * diff_btwn_capturing_imgs_sec);
 		float flow_rate_y = shift.y / (pixels_per_radian_v * diff_btwn_capturing_imgs_sec);
 
 		autopilot->write_optical_flow(shift.x, shift.y, flow_rate_x, flow_rate_y);
+		std::clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 
 		previous_img_capture_time_ = frame_grabbed_time;
-
-		std::clog << "x shifts: " << shift.x << "  " << "y shifts: " << shift.y << std::endl;
 	}
 
 	// Закрываем файлы и источник видео

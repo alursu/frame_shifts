@@ -44,6 +44,11 @@ protected:
 	//Для siyi-a8 mini
 	int camera_hfov_ = 48.3;
 
+	float tail_part_x_ = 0;
+	float tail_part_y_ = 0;
+	int percent_of_tail_for_use_ = 50;
+	float tail_part_to_use_ = 100.0/percent_of_tail_for_use_;
+
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	std::string create_output_folder();
 };
