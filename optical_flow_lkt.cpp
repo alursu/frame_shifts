@@ -171,6 +171,7 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
                                          std::vector<cv::Point2f> good_old)
 {
     cv::Mat arrowed_image = curr_image.clone();
+    cv::cvtColor(arrowed_image, arrowed_image, cv::COLOR_GRAY2BGR);
 
     double scale_factor = 2.0;
     int h_orig = curr_image.rows;
@@ -198,7 +199,7 @@ void OpticalFlowLkt::vizualize_result(const cv::Mat& curr_image, std::vector<cv:
 
         if (ia >= 0 && ia < w_orig && ib >= 0 && ib < h_orig &&
             ic >= 0 && ic < w_orig && id >= 0 && id < h_orig) {
-            cv::arrowedLine(arrowed_image, cv::Point(ia, ib), cv::Point( ic, id), cv::Scalar(0), 1, 8, 0, 1);
+            cv::arrowedLine(arrowed_image, cv::Point(ia, ib), cv::Point( ic, id), cv::Scalar(0,0,255), 1, 8, 0, 1);
             // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
             // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
         }
@@ -240,19 +241,20 @@ cv::Point2f OpticalFlowLkt::processing_calib_imgs(const cv::Mat &img)
     float flow_x = forecast_displacements[iter_frames_for_forecast_].x;
     float flow_y = forecast_displacements[iter_frames_for_forecast_].y;
     
-    cv::Mat img_for_savig = img.clone();
-    int width = img_for_savig.cols;
-    int height = img_for_savig.rows;
+    cv::Mat img_for_saving = img.clone();
+    cv::cvtColor(img_for_saving, img_for_saving, cv::COLOR_GRAY2BGR);
+    int width = img_for_saving.cols;
+    int height = img_for_saving.rows;
     int a = width / 2;
     int b = height / 2;
     int c = a + flow_x;
     int d = b + flow_y;
     if (c >= 0 && c < width && d >= 0 && d < height) {
-            cv::arrowedLine(img_for_savig, cv::Point(a, b), cv::Point(c, d), cv::Scalar(0), 1, 8, 0, 1);
+            cv::arrowedLine(img_for_saving, cv::Point(a, b), cv::Point(c, d), cv::Scalar(0,0,255), 1, 8, 0, 1);
             // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
             // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
     }
-    save_image(img_for_savig);
+    save_image(img_for_saving);
 
     displacement_forecast(flow_x, flow_y);
     return cv::Point2f(flow_x, flow_y);
@@ -265,7 +267,7 @@ std::string OpticalFlowLkt::create_output_folder()
     std::tm tm = *std::localtime(&time);
     
     std::ostringstream oss;
-    oss << "/home/teleskret/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    oss << "/home/adm/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string folder_name = oss.str();
     
     mkdir(folder_name.c_str(), 0777);
