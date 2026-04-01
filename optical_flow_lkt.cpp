@@ -238,8 +238,8 @@ void OpticalFlowLkt::save_image(const cv::Mat &img)
 
 cv::Point2f OpticalFlowLkt::processing_calib_imgs(const cv::Mat &img)
 {
-    float flow_x = forecast_displacements[iter_frames_for_forecast_].x;
-    float flow_y = forecast_displacements[iter_frames_for_forecast_].y;
+    float flow_x = forecast_displacements[iter_frames_for_forecast_ - 1].x;
+    float flow_y = forecast_displacements[iter_frames_for_forecast_ - 1].y;
     
     cv::Mat img_for_saving = img.clone();
     cv::cvtColor(img_for_saving, img_for_saving, cv::COLOR_GRAY2BGR);
