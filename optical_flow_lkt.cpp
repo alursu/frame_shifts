@@ -161,7 +161,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool rev
     flow_x *= 2.0;
     flow_y *= 2.0;
 
-    vizualize_result(curr_image, good_new, good_old);
+    // vizualize_result(curr_image, good_new, good_old);
     displacement_forecast(flow_x, flow_y);
     
     return cv::Point2f(flow_x,flow_y);
@@ -241,20 +241,20 @@ cv::Point2f OpticalFlowLkt::processing_calib_imgs(const cv::Mat &img)
     float flow_x = forecast_displacements[iter_frames_for_forecast_ - 1].x;
     float flow_y = forecast_displacements[iter_frames_for_forecast_ - 1].y;
     
-    cv::Mat img_for_saving = img.clone();
-    cv::cvtColor(img_for_saving, img_for_saving, cv::COLOR_GRAY2BGR);
-    int width = img_for_saving.cols;
-    int height = img_for_saving.rows;
-    int a = width / 2;
-    int b = height / 2;
-    int c = a + flow_x;
-    int d = b + flow_y;
-    if (c >= 0 && c < width && d >= 0 && d < height) {
-            cv::arrowedLine(img_for_saving, cv::Point(a, b), cv::Point(c, d), cv::Scalar(0,0,255), 1, 8, 0, 1);
-            // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
-            // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
-    }
-    save_image(img_for_saving);
+    // cv::Mat img_for_saving = img.clone();
+    // cv::cvtColor(img_for_saving, img_for_saving, cv::COLOR_GRAY2BGR);
+    // int width = img_for_saving.cols;
+    // int height = img_for_saving.rows;
+    // int a = width / 2;
+    // int b = height / 2;
+    // int c = a + flow_x;
+    // int d = b + flow_y;
+    // if (c >= 0 && c < width && d >= 0 && d < height) {
+    //         cv::arrowedLine(img_for_saving, cv::Point(a, b), cv::Point(c, d), cv::Scalar(0,0,255), 1, 8, 0, 1);
+    //         // cv::line(augmented_image, cv::Point(ia, ib), cv::Point(ic, id), cv::Scalar(0), 4);
+    //         // cv::circle(augmented_image, cv::Point(ia, ib), 7, cv::Scalar(0), -1);
+    // }
+    // save_image(img_for_saving);
 
     displacement_forecast(flow_x, flow_y);
     return cv::Point2f(flow_x, flow_y);

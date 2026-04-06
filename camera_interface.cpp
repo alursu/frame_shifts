@@ -21,7 +21,7 @@ void CameraInterface::open()
     int ret = guide_usb_get_devcount();//Quantity of equipment acquired  Device ID No.: 1,2,3,4,...,count
 
     while (ret < 1) {
-        usleep(1000000);
+        usleep(1500000);
         ret = guide_usb_get_devcount();
         std::clog << "No camera found, trying to reconnect..." << std::endl;
     }
