@@ -41,13 +41,9 @@ protected:
 	// clock_t previous_img_capture_time_ = 0;
 	std::chrono::_V2::system_clock::time_point previous_img_capture_time_;
 	
-	//Для siyi-a8 mini
+	//Для 9 mm - 48.3
+	//Для 13 mm - 33.9
 	int camera_hfov_ = 48.3;
-
-	float tail_part_x_ = 0;
-	float tail_part_y_ = 0;
-	int percent_of_tail_for_use_ = 50;
-	float tail_part_to_use_ = 100.0/percent_of_tail_for_use_;
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	std::string create_output_folder();
