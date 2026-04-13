@@ -2,7 +2,7 @@
 
 OpticalFlowLkt::OpticalFlowLkt()
 {
-    output_folder_ = create_output_folder();
+    // output_folder_ = create_output_folder();
 }
 
 OpticalFlowLkt::~OpticalFlowLkt()
@@ -62,7 +62,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool rev
 
     if (corners0.empty()) {
         prev_image_ = curr_image_grey.clone();
-        save_image(curr_image);
+        // save_image(curr_image);
         return cv::Point2f(0,0);
         // надо обработать
     }
@@ -126,7 +126,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool rev
     }
 
     if (good_new.empty()) {
-        save_image(curr_image);
+        // save_image(curr_image);
         return cv::Point2f(0,0);
         // надо обработать
     }
