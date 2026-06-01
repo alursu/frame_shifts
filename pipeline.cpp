@@ -31,20 +31,24 @@ int Pipeline::process_video()
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
-	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyAMA0", 115200);
+	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
 	port_quit_ = port;
 	autopilot_interface_quit_ = autopilot;
 	signal(SIGINT,quit_handler);
 
-	std::shared_ptr<CameraInterface> cam = std::make_shared<CameraInterface>();
-	cam->open();
+	// Захват видео
+	Ptr<VideoCapture> cap = Ptr<VideoCapture>(new VideoCapture());
+	cap->open(gstreamer_pipeline_thermal_, cv::CAP_GSTREAMER);
+
+	// std::shared_ptr<CameraInterface> cam = std::make_shared<CameraInterface>();
+	// cam->open();
 
 	// Если захват видео не удался - вывод сообщения и завершение программы
-	if (!cam->is_opened_){ 
+	if (!cap->isOpened()){ 
 		std::cout << "Video source is not opened" << std::endl;
-		cam->close();
+		cap->release();
 		return -1;
 	}
 
@@ -52,13 +56,15 @@ int Pipeline::process_video()
 	autopilot->start();
 
 	// Если захватили кадр - начинаем обработку
-	if (cam->camera_connected())
+	if (cap->grab())
 	{
+		previous_img_capture_time_ = std::chrono::high_resolution_clock::now();
 		// Загружаем изображение. Загружаем в second, чтобы далее сравнивать соседние кадры
 		// Т.е. меняем second и first местами каждый раз, загружаем последующее изображение в 
-		// second
-		second = cam->get_frame();
-		previous_img_capture_time_ = std::chrono::high_resolution_clock::now();
+		// second = cam->get_frame();
+		cap->retrieve(second);
+
+		// previous_img_capture_time_ = std::chrono::high_resolution_clock::now();
 
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
@@ -87,16 +93,21 @@ int Pipeline::process_video()
     float pixels_per_radian_v = (second.rows + 2*OFFSET_Y) / (camera_vfov*M_PI / 180);
 
 	// Пока можем захватывать кадры - обработка
-	while (cam->camera_connected())
+	while (cap->grab())
 	{
-		first = second.clone();
-		swap(firstInfo, secondInfo);
-		
-		second = cam->get_frame();
-
 		auto frame_grabbed_time = std::chrono::high_resolution_clock::now();
 		auto time_diff_btwn_capturing_imgs = std::chrono::duration_cast<std::chrono::microseconds>(frame_grabbed_time - previous_img_capture_time_);
 		float diff_btwn_capturing_imgs_sec = time_diff_btwn_capturing_imgs.count()/1000000.0;
+		
+		first = second.clone();
+		swap(firstInfo, secondInfo);
+		
+		// second = cam->get_frame();
+		cap->retrieve(second);
+
+		// auto frame_grabbed_time = std::chrono::high_resolution_clock::now();
+		// auto time_diff_btwn_capturing_imgs = std::chrono::duration_cast<std::chrono::microseconds>(frame_grabbed_time - previous_img_capture_time_);
+		// float diff_btwn_capturing_imgs_sec = time_diff_btwn_capturing_imgs.count()/1000000.0;
 
 		// Если кадр оказался пустым, пропускаем итерацию
 		if (second.rows == 0 || second.cols == 0){
@@ -109,6 +120,9 @@ int Pipeline::process_video()
 
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
+
+		cv::imshow("result", second);
+		cv::waitKey(5);
 
 		// // Сравниваем соседние кадры
 		// auto result = frameProcessor_.MatchImages(first, firstInfo, second, secondInfo);
@@ -130,7 +144,8 @@ int Pipeline::process_video()
 	// Закрываем файлы и источник видео
 	port->stop();
 	autopilot->stop();
-	cam->close();
+	// cam->close();
+	cap->release();
 
 	return 0;
 }
