@@ -267,7 +267,7 @@ std::string OpticalFlowLkt::create_output_folder()
     std::tm tm = *std::localtime(&time);
     
     std::ostringstream oss;
-    oss << "/home/adm/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
+    oss << "/home/teleskret/work/frame_shifts/build/arrows_" << std::put_time(&tm, "%Y-%m-%d_%H-%M-%S");
     std::string folder_name = oss.str();
     
     mkdir(folder_name.c_str(), 0777);
