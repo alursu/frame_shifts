@@ -31,7 +31,7 @@ int Pipeline::process_video()
 	cv::Point2f shift;
 	OpticalFlowLkt opticalflow;
 
-	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyACM0", 115200);
+	std::shared_ptr<UartInterface> port = std::make_shared<UartInterface>("/dev/ttyAMA0", 115200);
 	std::shared_ptr<AutopilotInterface> autopilot = std::make_shared<AutopilotInterface>(port);
 
 	port_quit_ = port;
@@ -51,6 +51,8 @@ int Pipeline::process_video()
 		cap->release();
 		return -1;
 	}
+
+	std::clog << "Programm uses HFOV = " << camera_hfov_ << std::endl;
 
 	port->start();
 	autopilot->start();
@@ -121,8 +123,8 @@ int Pipeline::process_video()
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
 
-		cv::imshow("result", second);
-		cv::waitKey(5);
+		// cv::imshow("result", second);
+		// cv::waitKey(5);
 
 		// // Сравниваем соседние кадры
 		// auto result = frameProcessor_.MatchImages(first, firstInfo, second, secondInfo);
