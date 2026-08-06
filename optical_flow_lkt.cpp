@@ -18,7 +18,7 @@ cv::Point2f OpticalFlowLkt::get_optical_flow(const cv::Mat &curr_image, bool rev
 
     cv::Mat curr_image_grey = curr_image.clone();
 
-    // Оптимизация - используем только центральные 60% изображения для обработки
+    // Оптимизация - используем только центральные 75% изображения для обработки
     // Мб использовать и для BRISK? Но с меньшим процентом. Мб переписать без этой кучи переменных
     int h = curr_image_grey.rows;
     int w = curr_image_grey.cols;

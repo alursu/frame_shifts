@@ -38,9 +38,9 @@ protected:
 	std::string output_folder_;
 	int save_counter_ = 0;
 
-	std::string gstreamer_pipeline_thermal_ = "gst-launch-1.0 v4l2src device=/dev/video2 ! \
-											   video/x-raw,format=YUY2,width=640,height=512,framerate=25/1 ! \
-											   videoconvert ! appsink sync=false";
+	std::string gstreamer_pipeline_thermal_ = "gst-launch-1.0 rtspsrc location=\"rtsp://192.168.144.108:554/stream=1\" latency=0  protocols=tcp !\
+											 rtpjitterbuffer latency=200 drop-on-latency=true ! application/x-rtp ! rtph264depay ! h264parse !\
+											 avdec_h264 !  videoconvert ! appsink sync=false";
 
 	// clock_t previous_img_capture_time_ = 0;
 	std::chrono::_V2::system_clock::time_point previous_img_capture_time_;
@@ -48,7 +48,7 @@ protected:
 	//Для 9 mm - 48.3
 	//Для 13 mm - 33.9
 	//Для 25 mm - 17
-	int camera_hfov_ = 17;
+	int camera_hfov_ = 48.3;
 
 	float calculate_vertical_fov(float hfov_deg, int width, int height);
 	std::string create_output_folder();

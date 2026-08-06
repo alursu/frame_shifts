@@ -71,10 +71,10 @@ int Pipeline::process_video()
 		// Cоздаем шаблон, с разрешением на 10 пикселей меньше по высоте и ширине исходного
 		cropRect = Rect(OFFSET_Y, OFFSET, second.cols-2*OFFSET_Y, second.rows-2*OFFSET);
 
-		std::ostringstream saving_path;
-		output_folder_ = create_output_folder();
-    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    	cv::imwrite(saving_path.str(), second);
+		// std::ostringstream saving_path;
+		// output_folder_ = create_output_folder();
+    	// saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	// cv::imwrite(saving_path.str(), second);
 
 		// Обрезаем исходное изображение по шаблону (по 5 пикселей с каждой стороны).
 		// Т.к. наибольшие искажения наблюдаются в близи к краям изображения, то просто обрезаем их 
@@ -116,9 +116,9 @@ int Pipeline::process_video()
 			continue;
 		}
 		
-		std::ostringstream saving_path;
-    	saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
-    	cv::imwrite(saving_path.str(), second);
+		// std::ostringstream saving_path;
+    	// saving_path << output_folder_ << "/frame_" << std::setfill('0') << std::setw(6) << save_counter_++ << ".jpg";
+    	// cv::imwrite(saving_path.str(), second);
 
 		second = Mat(second, cropRect);
 		cv::cvtColor(second,second,cv::COLOR_BGR2GRAY);
